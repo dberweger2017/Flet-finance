@@ -36,17 +36,36 @@ Finance Tracker App/
 ## Installation
 
 1. Ensure you have Python 3.7+ installed
-2. Install required packages:
+2. Clone or download this repository
+3. Create and activate a virtual environment:
 
-```bash
-pip install flet python-dateutil
+**Windows:**
+```cmd
+python -m venv venv
+venv\Scripts\activate
 ```
 
-3. Clone or download this repository
-4. Run the application:
+**macOS/Linux:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+4. Install required packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+5. Run the application:
 
 ```bash
 python main.py
+```
+
+To deactivate the virtual environment when you're done:
+```bash
+deactivate
 ```
 
 ## Usage
