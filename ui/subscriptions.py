@@ -16,10 +16,9 @@ class SubscriptionsView:
         """Build the subscriptions management UI"""
         # Subscriptions list
         self.subscriptions_list = ft.ListView(
-            expand=False,
+            expand=1,
             spacing=10,
             padding=20,
-            height=400,  # Fixed height to allow parent scrolling
         )
         
         # Empty state message
@@ -155,6 +154,8 @@ class SubscriptionsView:
                 self.empty_state,
             ]),
             padding=20,
+            # Make sure container fills available width
+            width=ft.width.fill,
         )
     
     def load_accounts_dropdown(self):
@@ -289,7 +290,7 @@ class SubscriptionsView:
         )
         action_buttons.append(delete_button)
         
-        # Create subscription card
+        # Create subscription card with fixed layout
         return ft.Card(
             content=ft.Container(
                 content=ft.Column([
@@ -298,15 +299,21 @@ class SubscriptionsView:
                         title=ft.Text(
                             subscription.name,
                             size=16,
-                            weight=ft.FontWeight.BOLD
+                            weight=ft.FontWeight.BOLD,
+                            # Ensure text doesn't wrap strangely
+                            no_wrap=True,
                         ),
-                        subtitle=ft.Text(f"Next payment: {next_payment_date_str} • {frequency_text}"),
+                        subtitle=ft.Text(
+                            f"Next payment: {next_payment_date_str} • {frequency_text}",
+                            # Ensure text doesn't wrap strangely
+                            no_wrap=True,
+                        ),
                         trailing=ft.Row([
                             ft.Container(
                                 ft.Text(
                                     status_text,
                                     color=ft.colors.WHITE,
-                                    size=12,
+                                    size=12, 
                                     weight=ft.FontWeight.BOLD,
                                 ),
                                 bgcolor=status_color,
@@ -320,21 +327,40 @@ class SubscriptionsView:
                                 weight=ft.FontWeight.BOLD,
                             ),
                         ]),
+                        # Ensure the ListTile has proper width
+                        content_padding=ft.padding.all(10),
                     ),
                     ft.Container(
                         content=ft.Column([
-                            ft.Text(linked_account_name),
-                            ft.Text(f"Category: {subscription.category or 'Not categorized'}"),
+                            ft.Text(
+                                linked_account_name,
+                                no_wrap=True,
+                            ),
+                            ft.Text(
+                                f"Category: {subscription.category or 'Not categorized'}",
+                                no_wrap=True,
+                            ),
                         ]),
                         padding=ft.padding.symmetric(horizontal=15),
+                        # Ensure the container has proper width
+                        width=ft.width.fill,
                     ),
                     ft.Container(
-                        content=ft.Row(action_buttons, alignment=ft.MainAxisAlignment.END),
+                        content=ft.Row(
+                            action_buttons,
+                            alignment=ft.MainAxisAlignment.END,
+                            # Wrap the button row if needed
+                            wrap=True,
+                        ),
                         padding=ft.padding.only(right=10, bottom=10, top=10),
                     ),
                 ]),
                 padding=10,
+                # Make sure the container fills available width
+                width=ft.width.fill,
             ),
+            # Ensure the card stretches properly
+            width=ft.width.fill,
         )
     
     def add_subscription(self, e):
