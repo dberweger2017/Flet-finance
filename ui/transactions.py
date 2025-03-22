@@ -199,11 +199,15 @@ class TransactionsView:
                     border_radius=10,
                     margin=ft.margin.only(bottom=20),
                 ),
+                # Create summary text first
+                self.transactions_summary = ft.Text("Total: 0.00 CHF")
+                
+                # Use it in the Row
                 ft.Container(
                     content=ft.Row([
                         ft.Text("Transaction History", size=20, weight=ft.FontWeight.BOLD),
                         ft.Container(expand=True),
-                        self.transactions_summary = ft.Text("Total: 0.00 CHF")
+                        self.transactions_summary,
                     ]),
                     margin=ft.margin.only(left=20, right=20, bottom=10),
                 ),
