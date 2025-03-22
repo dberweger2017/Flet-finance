@@ -83,7 +83,7 @@ class TransactionsView:
         # Apply filter button
         self.apply_filter_button = ft.ElevatedButton(
             "Apply Filters",
-            icon=ft.icons.FILTER_ALT,
+            icon=ft.Icons.FILTER_ALT,
             on_click=self.apply_filters,
         )
         
@@ -137,7 +137,7 @@ class TransactionsView:
         # Form actions
         self.add_transaction_button = ft.ElevatedButton(
             "Add Transaction",
-            icon=ft.icons.ADD,
+            icon=ft.Icons.ADD,
             on_click=self.add_transaction,
         )
         
@@ -313,23 +313,23 @@ class TransactionsView:
     def _create_transaction_card(self, transaction, accounts):
         """Create a card UI for a transaction"""
         # Determine icon and color based on transaction type
-        icon_name = ft.icons.PAYMENT
+        icon_name = ft.Icons.PAYMENT
         icon_color = ft.colors.BLUE
         amount_color = ft.colors.BLACK
         
         if transaction.transaction_type == "spending":
-            icon_name = ft.icons.SHOPPING_CART
+            icon_name = ft.Icons.SHOPPING_CART
             icon_color = ft.colors.RED
             amount_color = ft.colors.RED
         elif transaction.transaction_type == "income":
-            icon_name = ft.icons.MONETIZATION_ON
+            icon_name = ft.Icons.MONETIZATION_ON
             icon_color = ft.colors.GREEN
             amount_color = ft.colors.GREEN
         elif transaction.transaction_type == "transfer":
-            icon_name = ft.icons.SYNC_ALT
+            icon_name = ft.Icons.SYNC_ALT
             icon_color = ft.colors.PURPLE
         elif transaction.transaction_type == "adjustment":
-            icon_name = ft.icons.SETTINGS
+            icon_name = ft.Icons.SETTINGS
             icon_color = ft.colors.AMBER
             if transaction.to_account_id:  # Positive adjustment
                 amount_color = ft.colors.GREEN
@@ -378,7 +378,7 @@ class TransactionsView:
         
         # Delete button
         delete_button = ft.IconButton(
-            icon=ft.icons.DELETE,
+            icon=ft.Icons.DELETE,
             tooltip="Delete transaction",
             on_click=lambda e, tid=transaction.id: self.delete_transaction(tid),
         )

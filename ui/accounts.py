@@ -72,7 +72,7 @@ class AccountsView:
         # Form actions
         self.save_button = ft.ElevatedButton(
             "Add Account",
-            icon=ft.icons.SAVE,
+            icon=ft.Icons.SAVE,
             on_click=self.save_account,
         )
         
@@ -163,7 +163,7 @@ class AccountsView:
         # Transfer button
         transfer_button = ft.ElevatedButton(
             "Transfer Money",
-            icon=ft.icons.SYNC_ALT,
+            icon=ft.Icons.SYNC_ALT,
             on_click=self.show_transfer_dialog,
         )
         
@@ -221,14 +221,14 @@ class AccountsView:
     def _create_account_card(self, account):
         """Create a card UI for an account"""
         # Determine icon and color based on account type
-        icon_name = ft.icons.ACCOUNT_BALANCE
+        icon_name = ft.Icons.ACCOUNT_BALANCE
         icon_color = ft.colors.BLUE
         
         if account.account_type == "credit":
-            icon_name = ft.icons.CREDIT_CARD
+            icon_name = ft.Icons.CREDIT_CARD
             icon_color = ft.colors.PURPLE
         elif account.account_type == "savings":
-            icon_name = ft.icons.SAVINGS
+            icon_name = ft.Icons.SAVINGS
             icon_color = ft.colors.GREEN
         
         # Determine balance color
@@ -238,19 +238,19 @@ class AccountsView:
         
         # Create action buttons
         edit_button = ft.IconButton(
-            icon=ft.icons.EDIT,
+            icon=ft.Icons.EDIT,
             tooltip="Edit account",
             on_click=lambda e, aid=account.id: self.edit_account(aid),
         )
         
         delete_button = ft.IconButton(
-            icon=ft.icons.DELETE,
+            icon=ft.Icons.DELETE,
             tooltip="Delete account",
             on_click=lambda e, aid=account.id: self.delete_account(aid),
         )
         
         reconcile_button = ft.IconButton(
-            icon=ft.icons.BALANCE,
+            icon=ft.Icons.BALANCE,
             tooltip="Reconcile balance",
             on_click=lambda e, aid=account.id: self.reconcile_account(aid),
         )

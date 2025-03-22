@@ -66,7 +66,7 @@ class DashboardView:
             content=ft.Container(
                 content=ft.Column([
                     ft.Row([
-                        ft.Icon(ft.icons.NOTIFICATIONS_ACTIVE, color=ft.colors.AMBER),
+                        ft.Icon(ft.Icons.NOTIFICATIONS_ACTIVE, color=ft.colors.AMBER),
                         ft.Text("Pending Transactions", weight=ft.FontWeight.BOLD),
                     ]),
                     ft.Text("You have 0 pending transactions that need attention.", size=14),
@@ -135,7 +135,7 @@ class DashboardView:
                 ft.Container(
                     content=ft.ElevatedButton(
                         "Refresh Dashboard",
-                        icon=ft.icons.REFRESH,
+                        icon=ft.Icons.REFRESH,
                         on_click=self._refresh_clicked
                     ),
                     alignment=ft.alignment.center,
@@ -201,7 +201,7 @@ class DashboardView:
         
         for account in accounts:
             icon = ft.Icon(
-                name=ft.icons.ACCOUNT_BALANCE if account.account_type != "credit" else ft.icons.CREDIT_CARD,
+                name=ft.Icons.ACCOUNT_BALANCE if account.account_type != "credit" else ft.Icons.CREDIT_CARD,
                 color=ft.colors.BLUE if account.account_type != "credit" else ft.colors.PURPLE
             )
             

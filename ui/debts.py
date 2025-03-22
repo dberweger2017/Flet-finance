@@ -23,7 +23,7 @@ class DebtsView:
             tabs=[
                 ft.Tab(
                     text="Money You Owe",
-                    icon=ft.icons.ARROW_UPWARD,
+                    icon=ft.Icons.ARROW_UPWARD,
                     content=ft.Column([
                         ft.Container(height=20),
                         self.payable_list,
@@ -31,7 +31,7 @@ class DebtsView:
                 ),
                 ft.Tab(
                     text="Money Owed to You",
-                    icon=ft.icons.ARROW_DOWNWARD,
+                    icon=ft.Icons.ARROW_DOWNWARD,
                     content=ft.Column([
                         ft.Container(height=20),
                         self.receivable_list,
@@ -87,7 +87,7 @@ class DebtsView:
         # Form actions
         self.add_debt_button = ft.ElevatedButton(
             "Add Debt",
-            icon=ft.icons.ADD,
+            icon=ft.Icons.ADD,
             on_click=self.add_debt,
         )
         
@@ -177,7 +177,7 @@ class DebtsView:
     def _create_debt_card(self, debt, accounts, is_payable=True):
         """Create a card UI for a debt"""
         # Determine icon, color, and status
-        icon_name = ft.icons.ARROW_UPWARD if is_payable else ft.icons.ARROW_DOWNWARD
+        icon_name = ft.Icons.ARROW_UPWARD if is_payable else ft.Icons.ARROW_DOWNWARD
         icon_color = ft.colors.RED if is_payable else ft.colors.GREEN
         amount_color = ft.colors.RED if is_payable else ft.colors.GREEN
         
@@ -202,21 +202,21 @@ class DebtsView:
         # Action buttons
         mark_paid_button = ft.ElevatedButton(
             "Mark as Paid",
-            icon=ft.icons.CHECK,
+            icon=ft.Icons.CHECK,
             on_click=lambda e, did=debt.id: self.mark_debt_paid(did),
             disabled=debt.status == "paid",
         )
         
         edit_button = ft.OutlinedButton(
             "Edit",
-            icon=ft.icons.EDIT,
+            icon=ft.Icons.EDIT,
             on_click=lambda e, did=debt.id: self.edit_debt(did),
             disabled=debt.status == "paid",
         )
         
         delete_button = ft.TextButton(
             "Delete",
-            icon=ft.icons.DELETE,
+            icon=ft.Icons.DELETE,
             on_click=lambda e, did=debt.id: self.delete_debt(did),
         )
         

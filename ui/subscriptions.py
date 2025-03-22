@@ -24,7 +24,7 @@ class SubscriptionsView:
         # Empty state message
         self.empty_state = ft.Container(
             content=ft.Column([
-                ft.Icon(ft.icons.SUBSCRIPTIONS_OUTLINED, size=64, color=ft.colors.GREY_400),
+                ft.Icon(ft.Icons.SUBSCRIPTIONS_OUTLINED, size=64, color=ft.colors.GREY_400),
                 ft.Text("No subscriptions found", size=20, color=ft.colors.GREY_600),
                 ft.Text("Add a subscription to get started.", color=ft.colors.GREY_600),
             ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
@@ -91,7 +91,7 @@ class SubscriptionsView:
         # Form actions
         self.add_subscription_button = ft.ElevatedButton(
             "Add Subscription",
-            icon=ft.icons.ADD,
+            icon=ft.Icons.ADD,
             on_click=self.add_subscription,
         )
         
@@ -219,19 +219,19 @@ class SubscriptionsView:
     def _create_subscription_card(self, subscription, accounts):
         """Create a card UI for a subscription"""
         # Determine icon and color based on category
-        icon_name = ft.icons.SUBSCRIPTIONS
+        icon_name = ft.Icons.SUBSCRIPTIONS
         
         if subscription.category:
             if subscription.category.lower() == "entertainment":
-                icon_name = ft.icons.MOVIE
+                icon_name = ft.Icons.MOVIE
             elif subscription.category.lower() == "software":
-                icon_name = ft.icons.COMPUTER
+                icon_name = ft.Icons.COMPUTER
             elif subscription.category.lower() == "streaming":
-                icon_name = ft.icons.VIDEO_LIBRARY
+                icon_name = ft.Icons.VIDEO_LIBRARY
             elif subscription.category.lower() == "utilities":
-                icon_name = ft.icons.HOME
+                icon_name = ft.Icons.HOME
             elif subscription.category.lower() == "insurance":
-                icon_name = ft.icons.SECURITY
+                icon_name = ft.Icons.SECURITY
         
         icon_color = ft.colors.BLUE
         
@@ -262,28 +262,28 @@ class SubscriptionsView:
         if subscription.status == "active":
             pause_button = ft.OutlinedButton(
                 "Pause",
-                icon=ft.icons.PAUSE,
+                icon=ft.Icons.PAUSE,
                 on_click=lambda e, sid=subscription.id: self.toggle_subscription_status(sid, "paused"),
             )
             action_buttons.append(pause_button)
         elif subscription.status == "paused":
             resume_button = ft.OutlinedButton(
                 "Resume",
-                icon=ft.icons.PLAY_ARROW,
+                icon=ft.Icons.PLAY_ARROW,
                 on_click=lambda e, sid=subscription.id: self.toggle_subscription_status(sid, "active"),
             )
             action_buttons.append(resume_button)
         
         edit_button = ft.OutlinedButton(
             "Edit",
-            icon=ft.icons.EDIT,
+            icon=ft.Icons.EDIT,
             on_click=lambda e, sid=subscription.id: self.edit_subscription(sid),
         )
         action_buttons.append(edit_button)
         
         delete_button = ft.TextButton(
             "Delete",
-            icon=ft.icons.DELETE,
+            icon=ft.Icons.DELETE,
             on_click=lambda e, sid=subscription.id: self.delete_subscription(sid),
         )
         action_buttons.append(delete_button)

@@ -22,7 +22,7 @@ class PendingView:
         # Empty state message
         self.empty_state = ft.Container(
             content=ft.Column([
-                ft.Icon(ft.icons.CHECK_CIRCLE_OUTLINE, size=64, color=ft.colors.GREY_400),
+                ft.Icon(ft.Icons.CHECK_CIRCLE_OUTLINE, size=64, color=ft.colors.GREY_400),
                 ft.Text("No pending transactions", size=20, color=ft.colors.GREY_600),
                 ft.Text("All your transactions have been processed.", color=ft.colors.GREY_600),
             ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
@@ -39,13 +39,13 @@ class PendingView:
                         ft.Container(expand=True),
                         ft.ElevatedButton(
                             "Process Selected",
-                            icon=ft.icons.CHECK,
+                            icon=ft.Icons.CHECK,
                             on_click=self.process_selected,
                             disabled=True,
                         ),
                         ft.OutlinedButton(
                             "Refresh",
-                            icon=ft.icons.REFRESH,
+                            icon=ft.Icons.REFRESH,
                             on_click=self.refresh_pending,
                         ),
                     ]),
@@ -89,23 +89,23 @@ class PendingView:
     def _create_pending_card(self, transaction, accounts):
         """Create a card UI for a pending transaction"""
         # Determine icon and color based on transaction type
-        icon_name = ft.icons.PAYMENT
+        icon_name = ft.Icons.PAYMENT
         icon_color = ft.colors.BLUE
         amount_color = ft.colors.BLACK
         
         if transaction.transaction_type == "spending":
-            icon_name = ft.icons.SHOPPING_CART
+            icon_name = ft.Icons.SHOPPING_CART
             icon_color = ft.colors.RED
             amount_color = ft.colors.RED
         elif transaction.transaction_type == "income":
-            icon_name = ft.icons.MONETIZATION_ON
+            icon_name = ft.Icons.MONETIZATION_ON
             icon_color = ft.colors.GREEN
             amount_color = ft.colors.GREEN
         elif transaction.transaction_type == "transfer":
-            icon_name = ft.icons.SYNC_ALT
+            icon_name = ft.Icons.SYNC_ALT
             icon_color = ft.colors.PURPLE
         elif transaction.transaction_type == "adjustment":
-            icon_name = ft.icons.SETTINGS
+            icon_name = ft.Icons.SETTINGS
             icon_color = ft.colors.AMBER
         
         # Get account names
@@ -152,19 +152,19 @@ class PendingView:
         # Action buttons
         approve_button = ft.ElevatedButton(
             "Approve",
-            icon=ft.icons.CHECK,
+            icon=ft.Icons.CHECK,
             on_click=lambda e, tid=transaction.id: self.approve_transaction(tid),
         )
         
         delete_button = ft.OutlinedButton(
             "Delete",
-            icon=ft.icons.DELETE,
+            icon=ft.Icons.DELETE,
             on_click=lambda e, tid=transaction.id: self.delete_transaction(tid),
         )
         
         edit_button = ft.TextButton(
             "Edit",
-            icon=ft.icons.EDIT,
+            icon=ft.Icons.EDIT,
             on_click=lambda e, tid=transaction.id: self.edit_transaction(tid),
         )
         
