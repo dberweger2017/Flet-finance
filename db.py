@@ -8,6 +8,7 @@ from datetime import datetime, date, timedelta
 
 class Database:
     def __init__(self, db_path="finance_tracker.db"):
+        print(f"[DEBUG] Initializing Database with path: {db_path}")
         self.db_path = db_path
         self.conn = None
         self.lock = threading.RLock()  # Reentrant lock for thread safety
@@ -15,15 +16,19 @@ class Database:
         
     def initialize(self):
         """Initialize the database connection and tables"""
+        print("[DEBUG] Starting database initialization")
         create_new = not os.path.exists(self.db_path)
+        print(f"[DEBUG] Database {'will be created' if create_new else 'already exists'}")
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         
         if create_new:
             self._create_tables()
+        print("[DEBUG] Database initialization complete")
     
     def _create_tables(self):
         """Create database tables if they don't exist"""
+        print("[DEBUG] Creating database tables")
         with self.lock:
             cursor = self.conn.cursor()
             
@@ -39,6 +44,7 @@ class Database:
                 is_savings INTEGER NOT NULL
             )
             ''')
+            print("[DEBUG] Created accounts table")
             
             # Create transactions table
             cursor.execute('''
@@ -56,6 +62,7 @@ class Database:
                 FOREIGN KEY (to_account_id) REFERENCES accounts (id)
             )
             ''')
+            print("[DEBUG] Created transactions table")
             
             # Create debts table
             cursor.execute('''
@@ -72,6 +79,7 @@ class Database:
                 FOREIGN KEY (linked_account_id) REFERENCES accounts (id)
             )
             ''')
+            print("[DEBUG] Created debts table")
             
             # Create subscriptions table
             cursor.execute('''
@@ -88,18 +96,23 @@ class Database:
                 FOREIGN KEY (linked_account_id) REFERENCES accounts (id)
             )
             ''')
+            print("[DEBUG] Created subscriptions table")
             
             self.conn.commit()
+            print("[DEBUG] All tables created successfully")
     
     def close(self):
         """Close the database connection"""
+        print("[DEBUG] Closing database connection")
         if self.conn:
             with self.lock:
                 self.conn.close()
+                print("[DEBUG] Database connection closed")
     
     # Account operations
     def save_account(self, account):
         """Save or update an account"""
+        print(f"[DEBUG] Saving account: {account.id}")
         with self.lock:
             cursor = self.conn.cursor()
             data = account.to_dict()
@@ -110,10 +123,12 @@ class Database:
             ''', data)
             
             self.conn.commit()
+            print(f"[DEBUG] Account {account.id} saved successfully")
             return account.id
     
     def get_account(self, account_id):
         """Get account by ID"""
+        print(f"[DEBUG] Fetching account: {account_id}")
         from models import Account
         
         with self.lock:
@@ -122,11 +137,14 @@ class Database:
             row = cursor.fetchone()
             
             if row:
+                print(f"[DEBUG] Found account: {account_id}")
                 return Account.from_dict(dict(row))
+            print(f"[DEBUG] Account not found: {account_id}")
             return None
     
     def get_all_accounts(self):
         """Get all accounts"""
+        print("[DEBUG] Fetching all accounts")
         from models import Account
         
         with self.lock:
@@ -134,19 +152,25 @@ class Database:
             cursor.execute('SELECT * FROM accounts')
             rows = cursor.fetchall()
             
-            return [Account.from_dict(dict(row)) for row in rows]
+            accounts = [Account.from_dict(dict(row)) for row in rows]
+            print(f"[DEBUG] Found {len(accounts)} accounts")
+            return accounts
     
     def delete_account(self, account_id):
         """Delete an account by ID"""
+        print(f"[DEBUG] Attempting to delete account: {account_id}")
         with self.lock:
             cursor = self.conn.cursor()
             cursor.execute('DELETE FROM accounts WHERE id = ?', (account_id,))
             self.conn.commit()
-            return cursor.rowcount > 0
+            success = cursor.rowcount > 0
+            print(f"[DEBUG] Account deletion {'successful' if success else 'failed'}: {account_id}")
+            return success
     
     # Transaction operations
     def save_transaction(self, transaction):
         """Save or update a transaction"""
+        print(f"[DEBUG] Saving transaction: {transaction.id}")
         with self.lock:
             cursor = self.conn.cursor()
             data = transaction.to_dict()
@@ -158,10 +182,12 @@ class Database:
             ''', data)
             
             self.conn.commit()
+            print(f"[DEBUG] Transaction {transaction.id} saved successfully")
             return transaction.id
     
     def get_transaction(self, transaction_id):
         """Get transaction by ID"""
+        print(f"[DEBUG] Fetching transaction: {transaction_id}")
         from models import Transaction
         
         with self.lock:
@@ -170,11 +196,20 @@ class Database:
             row = cursor.fetchone()
             
             if row:
+                print(f"[DEBUG] Found transaction: {transaction_id}")
                 return Transaction.from_dict(dict(row))
+            print(f"[DEBUG] Transaction not found: {transaction_id}")
             return None
     
     def get_all_transactions(self, status=None, account_id=None, transaction_type=None, start_date=None, end_date=None):
         """Get transactions with optional filtering"""
+        print("[DEBUG] Fetching transactions with filters:", {
+            "status": status,
+            "account_id": account_id,
+            "transaction_type": transaction_type,
+            "start_date": start_date,
+            "end_date": end_date
+        })
         from models import Transaction
         
         with self.lock:
@@ -215,19 +250,25 @@ class Database:
             cursor.execute(query, params)
             rows = cursor.fetchall()
             
-            return [Transaction.from_dict(dict(row)) for row in rows]
+            transactions = [Transaction.from_dict(dict(row)) for row in rows]
+            print(f"[DEBUG] Found {len(transactions)} transactions")
+            return transactions
     
     def delete_transaction(self, transaction_id):
         """Delete a transaction by ID"""
+        print(f"[DEBUG] Attempting to delete transaction: {transaction_id}")
         with self.lock:
             cursor = self.conn.cursor()
             cursor.execute('DELETE FROM transactions WHERE id = ?', (transaction_id,))
             self.conn.commit()
-            return cursor.rowcount > 0
+            success = cursor.rowcount > 0
+            print(f"[DEBUG] Transaction deletion {'successful' if success else 'failed'}: {transaction_id}")
+            return success
     
     # Debt operations
     def save_debt(self, debt):
         """Save or update a debt"""
+        print(f"[DEBUG] Saving debt: {debt.id}")
         with self.lock:
             cursor = self.conn.cursor()
             data = debt.to_dict()
@@ -239,10 +280,12 @@ class Database:
             ''', data)
             
             self.conn.commit()
+            print(f"[DEBUG] Debt {debt.id} saved successfully")
             return debt.id
     
     def get_debt(self, debt_id):
         """Get debt by ID"""
+        print(f"[DEBUG] Fetching debt: {debt_id}")
         from models import Debt
         
         with self.lock:
@@ -251,11 +294,17 @@ class Database:
             row = cursor.fetchone()
             
             if row:
+                print(f"[DEBUG] Found debt: {debt_id}")
                 return Debt.from_dict(dict(row))
+            print(f"[DEBUG] Debt not found: {debt_id}")
             return None
     
     def get_all_debts(self, status=None, is_receivable=None):
         """Get debts with optional filtering"""
+        print("[DEBUG] Fetching debts with filters:", {
+            "status": status,
+            "is_receivable": is_receivable
+        })
         from models import Debt
         
         with self.lock:
@@ -280,19 +329,25 @@ class Database:
             cursor.execute(query, params)
             rows = cursor.fetchall()
             
-            return [Debt.from_dict(dict(row)) for row in rows]
+            debts = [Debt.from_dict(dict(row)) for row in rows]
+            print(f"[DEBUG] Found {len(debts)} debts")
+            return debts
     
     def delete_debt(self, debt_id):
         """Delete a debt by ID"""
+        print(f"[DEBUG] Attempting to delete debt: {debt_id}")
         with self.lock:
             cursor = self.conn.cursor()
             cursor.execute('DELETE FROM debts WHERE id = ?', (debt_id,))
             self.conn.commit()
-            return cursor.rowcount > 0
+            success = cursor.rowcount > 0
+            print(f"[DEBUG] Debt deletion {'successful' if success else 'failed'}: {debt_id}")
+            return success
     
     # Subscription operations
     def save_subscription(self, subscription):
         """Save or update a subscription"""
+        print(f"[DEBUG] Saving subscription: {subscription.id}")
         with self.lock:
             cursor = self.conn.cursor()
             data = subscription.to_dict()
@@ -304,10 +359,12 @@ class Database:
             ''', data)
             
             self.conn.commit()
+            print(f"[DEBUG] Subscription {subscription.id} saved successfully")
             return subscription.id
     
     def get_subscription(self, subscription_id):
         """Get subscription by ID"""
+        print(f"[DEBUG] Fetching subscription: {subscription_id}")
         from models import Subscription
         
         with self.lock:
@@ -316,11 +373,14 @@ class Database:
             row = cursor.fetchone()
             
             if row:
+                print(f"[DEBUG] Found subscription: {subscription_id}")
                 return Subscription.from_dict(dict(row))
+            print(f"[DEBUG] Subscription not found: {subscription_id}")
             return None
     
     def get_all_subscriptions(self, status=None):
         """Get subscriptions with optional filtering"""
+        print("[DEBUG] Fetching subscriptions with status filter:", status)
         from models import Subscription
         
         with self.lock:
@@ -335,19 +395,25 @@ class Database:
                 
             rows = cursor.fetchall()
             
-            return [Subscription.from_dict(dict(row)) for row in rows]
+            subscriptions = [Subscription.from_dict(dict(row)) for row in rows]
+            print(f"[DEBUG] Found {len(subscriptions)} subscriptions")
+            return subscriptions
     
     def delete_subscription(self, subscription_id):
         """Delete a subscription by ID"""
+        print(f"[DEBUG] Attempting to delete subscription: {subscription_id}")
         with self.lock:
             cursor = self.conn.cursor()
             cursor.execute('DELETE FROM subscriptions WHERE id = ?', (subscription_id,))
             self.conn.commit()
-            return cursor.rowcount > 0
+            success = cursor.rowcount > 0
+            print(f"[DEBUG] Subscription deletion {'successful' if success else 'failed'}: {subscription_id}")
+            return success
     
     # Utility methods
     def get_savings_stats(self, month=None, year=None):
         """Get savings statistics for current month or specified month/year"""
+        print(f"[DEBUG] Getting savings stats for month: {month}, year: {year}")
         current_date = datetime.now()
         month = month or current_date.month
         year = year or current_date.year
@@ -357,8 +423,10 @@ class Database:
             cursor = self.conn.cursor()
             cursor.execute('SELECT id FROM accounts WHERE is_savings = 1')
             savings_account_ids = [row[0] for row in cursor.fetchall()]
+            print(f"[DEBUG] Found {len(savings_account_ids)} savings accounts")
             
             if not savings_account_ids:
+                print("[DEBUG] No savings accounts found")
                 return {"total_balance": 0, "month_contribution": 0}
             
             # Get total savings balance
@@ -369,6 +437,8 @@ class Database:
                 if account:
                     savings_accounts.append(account)
                     total_balance += account.balance
+            
+            print(f"[DEBUG] Total savings balance: {total_balance}")
             
             # Calculate contributions for the month
             start_date = f"{year}-{month:02d}-01"
@@ -398,6 +468,8 @@ class Database:
                 
                 month_contribution += deposits - withdrawals
             
+            print(f"[DEBUG] Month contribution: {month_contribution}")
+            
             return {
                 "total_balance": total_balance,
                 "month_contribution": month_contribution,
@@ -406,6 +478,7 @@ class Database:
     
     def get_liquidity(self):
         """Calculate current liquidity (sum of debit accounts and available credit)"""
+        print("[DEBUG] Calculating liquidity")
         accounts = self.get_all_accounts()
         liquidity = 0
         
@@ -418,10 +491,12 @@ class Database:
             elif account.account_type == "credit":
                 liquidity += account.get_available_balance()
         
+        print(f"[DEBUG] Total liquidity: {liquidity}")
         return liquidity
     
     def get_net_worth(self):
         """Calculate net worth considering accounts, debts, and subscriptions"""
+        print("[DEBUG] Calculating net worth")
         with self.lock:
             # Assets: All account balances + receivables
             assets = 0
@@ -433,6 +508,8 @@ class Database:
             for debt in receivables:
                 assets += debt.amount
             
+            print(f"[DEBUG] Total assets: {assets}")
+            
             # Liabilities: Credit account negative balances + debts
             liabilities = 0
             for account in accounts:
@@ -442,6 +519,8 @@ class Database:
             payable_debts = self.get_all_debts(status="pending", is_receivable=False)
             for debt in payable_debts:
                 liabilities += debt.amount
+            
+            print(f"[DEBUG] Total liabilities before subscriptions: {liabilities}")
             
             # Upcoming subscription payments (next 30 days)
             today = date.today()
@@ -455,6 +534,9 @@ class Database:
             upcoming_subscriptions = cursor.fetchone()[0] or 0
             liabilities += upcoming_subscriptions
             
+            print(f"[DEBUG] Total liabilities including subscriptions: {liabilities}")
+            print(f"[DEBUG] Net worth: {assets - liabilities}")
+            
             return {
                 "assets": assets,
                 "liabilities": liabilities,
@@ -463,6 +545,7 @@ class Database:
     
     def check_and_update_overdue_debts(self):
         """Update status of overdue debts"""
+        print("[DEBUG] Checking for overdue debts")
         today = date.today().isoformat()
         
         with self.lock:
@@ -473,11 +556,14 @@ class Database:
             WHERE due_date < ? AND status = 'pending'
             ''', (today,))
             
+            updated_count = cursor.rowcount
             self.conn.commit()
-            return cursor.rowcount
+            print(f"[DEBUG] Updated {updated_count} overdue debts")
+            return updated_count
     
     def generate_pending_subscription_transactions(self):
         """Generate pending transactions for active subscriptions due today or in the past"""
+        print("[DEBUG] Generating pending subscription transactions")
         from models import Subscription
         
         today = date.today().isoformat()
@@ -491,6 +577,7 @@ class Database:
             
             rows = cursor.fetchall()
             subscriptions = [Subscription.from_dict(dict(row)) for row in rows]
+            print(f"[DEBUG] Found {len(subscriptions)} subscriptions due for payment")
             
             transactions_generated = []
             for subscription in subscriptions:
@@ -501,4 +588,5 @@ class Database:
                     self.save_subscription(subscription)
                     transactions_generated.append(transaction)
             
+            print(f"[DEBUG] Generated {len(transactions_generated)} pending transactions")
             return transactions_generated
