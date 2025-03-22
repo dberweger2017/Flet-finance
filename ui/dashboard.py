@@ -1,19 +1,23 @@
 # ui/dashboard.py - Finance Tracker App/ui/dashboard.py
 
 import flet as ft
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import calendar
+import json
+from dashboard_data import DashboardDataProvider
 
 class DashboardView:
     def __init__(self, page, db):
         self.page = page
         self.db = db
+        # Initialize dashboard data provider
+        self.data_provider = DashboardDataProvider(db)
         self.view = self.build()
         self.update_data()
         
     def build(self):
-        """Build the dashboard UI"""
-        # Main metrics cards
+        """Build the dashboard UI with chart visualizations"""
+        # Create metrics cards (same as the original)
         self.liquidity_card = self._create_metric_card(
             "Current Liquidity",
             "0.00 CHF",
@@ -38,7 +42,75 @@ class DashboardView:
             f"Savings in {calendar.month_name[datetime.now().month]}"
         )
         
-        # Accounts summary section
+        # Create simple chart visualizations using Flet's built-in components
+        
+        # Liquidity Chart Container
+        self.liquidity_chart_title = ft.Text(
+            "Liquidity Trend (Last 90 Days)",
+            size=18,
+            weight=ft.FontWeight.BOLD
+        )
+        
+        self.liquidity_chart_container = ft.Container(
+            content=ft.Column([
+                self.liquidity_chart_title,
+                ft.Text("Daily amount available for immediate spending", size=12, color=ft.colors.GREY_600),
+                # Placeholder for the chart - will be populated in update_data
+                ft.Container(height=200)
+            ]),
+            margin=ft.margin.only(top=10, bottom=20),
+            padding=10,
+            border=ft.border.all(1, ft.colors.GREY_300),
+            border_radius=10,
+            width=800,
+            alignment=ft.alignment.center
+        )
+        
+        # Net Worth Chart Container
+        self.net_worth_chart_title = ft.Text(
+            "Net Worth Progress (Last 90 Days)",
+            size=18,
+            weight=ft.FontWeight.BOLD
+        )
+        
+        self.net_worth_chart_container = ft.Container(
+            content=ft.Column([
+                self.net_worth_chart_title,
+                ft.Text("Daily assets minus liabilities over time", size=12, color=ft.colors.GREY_600),
+                # Placeholder for the chart - will be populated in update_data
+                ft.Container(height=200)
+            ]),
+            margin=ft.margin.only(top=10, bottom=20),
+            padding=10,
+            border=ft.border.all(1, ft.colors.GREY_300),
+            border_radius=10,
+            width=800,
+            alignment=ft.alignment.center
+        )
+        
+        # Monthly Savings Chart Container
+        self.savings_chart_title = ft.Text(
+            "Monthly Savings",
+            size=18,
+            weight=ft.FontWeight.BOLD
+        )
+        
+        self.savings_chart_container = ft.Container(
+            content=ft.Column([
+                self.savings_chart_title,
+                ft.Text("Amount saved each month", size=12, color=ft.colors.GREY_600),
+                # Placeholder for the chart - will be populated in update_data
+                ft.Container(height=200)
+            ]),
+            margin=ft.margin.only(top=10, bottom=20),
+            padding=10,
+            border=ft.border.all(1, ft.colors.GREY_300),
+            border_radius=10,
+            width=800,
+            alignment=ft.alignment.center
+        )
+        
+        # Accounts summary section (same as original)
         self.accounts_summary = ft.DataTable(
             columns=[
                 ft.DataColumn(ft.Text("Account")),
@@ -50,7 +122,7 @@ class DashboardView:
             rows=[],
         )
         
-        # Upcoming section
+        # Upcoming section (same as original)
         self.upcoming_transactions = ft.DataTable(
             columns=[
                 ft.DataColumn(ft.Text("Date")),
@@ -61,7 +133,7 @@ class DashboardView:
             rows=[],
         )
         
-        # Card for pending transactions alert
+        # Card for pending transactions alert (same as original)
         self.pending_alert = ft.Card(
             content=ft.Container(
                 content=ft.Column([
@@ -80,7 +152,7 @@ class DashboardView:
             visible=False
         )
         
-        # Return the main container
+        # Return the main container with charts
         return ft.Container(
             content=ft.Column([
                 ft.Container(
@@ -88,27 +160,97 @@ class DashboardView:
                     margin=ft.margin.only(bottom=20)
                 ),
                 
-                # Metrics row
-                ft.Container(
-                    content=ft.Row([
-                        self.liquidity_card,
-                        self.net_worth_card,
-                    ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                    margin=ft.margin.only(bottom=10)
-                ),
-                
-                ft.Container(
-                    content=ft.Row([
-                        self.savings_card,
-                        self.monthly_savings_card,
-                    ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                    margin=ft.margin.only(bottom=20)
-                ),
-                
-                # Pending transactions alert
+                # Pending transactions alert (same as original)
                 self.pending_alert,
                 
-                # Accounts section
+                # Current Liquidity section
+                ft.Container(
+                    content=ft.Column([
+                        # Liquidity title in the middle
+                        ft.Container(
+                            content=ft.Text("Current Liquidity", size=24, weight=ft.FontWeight.BOLD),
+                            alignment=ft.alignment.center,
+                            margin=ft.margin.only(top=10, bottom=10)
+                        ),
+                        # Liquidity metric value
+                        ft.Container(
+                            content=ft.Text(
+                                f"{self.db.get_liquidity():.2f} CHF",
+                                size=32,
+                                weight=ft.FontWeight.BOLD,
+                                color=ft.colors.BLUE
+                            ),
+                            alignment=ft.alignment.center,
+                            margin=ft.margin.only(bottom=20)
+                        ),
+                        # Liquidity chart
+                        ft.Container(
+                            content=self.liquidity_chart_container,
+                            alignment=ft.alignment.center
+                        )
+                    ]),
+                    margin=ft.margin.only(bottom=30)
+                ),
+                
+                # Net Worth section
+                ft.Container(
+                    content=ft.Column([
+                        # Net Worth title in the middle
+                        ft.Container(
+                            content=ft.Text("Net Worth", size=24, weight=ft.FontWeight.BOLD),
+                            alignment=ft.alignment.center,
+                            margin=ft.margin.only(top=10, bottom=10)
+                        ),
+                        # Net Worth metric value
+                        ft.Container(
+                            content=ft.Text(
+                                f"{self.db.get_net_worth()['net_worth']:.2f} CHF",
+                                size=32,
+                                weight=ft.FontWeight.BOLD,
+                                color=ft.colors.GREEN
+                            ),
+                            alignment=ft.alignment.center,
+                            margin=ft.margin.only(bottom=20)
+                        ),
+                        # Net Worth chart
+                        ft.Container(
+                            content=self.net_worth_chart_container,
+                            alignment=ft.alignment.center
+                        )
+                    ]),
+                    margin=ft.margin.only(bottom=30)
+                ),
+                
+                # Monthly Savings section
+                ft.Container(
+                    content=ft.Column([
+                        # Monthly Savings title in the middle
+                        ft.Container(
+                            content=ft.Text("Monthly Savings", size=24, weight=ft.FontWeight.BOLD),
+                            alignment=ft.alignment.center,
+                            margin=ft.margin.only(top=10, bottom=10)
+                        ),
+                        # Monthly Savings metric value
+                        ft.Container(
+                            content=ft.Text(
+                                f"{self.db.get_savings_stats()['month_contribution']:.2f} CHF",
+                                size=32,
+                                weight=ft.FontWeight.BOLD,
+                                color=ft.colors.PURPLE
+                            ),
+                            alignment=ft.alignment.center,
+                            margin=ft.margin.only(bottom=20)
+                        ),
+                        # Savings chart
+                        ft.Container(
+                            content=self.savings_chart_container,
+                            alignment=ft.alignment.center
+                        )
+                    ]),
+                    margin=ft.margin.only(bottom=30)
+                ),
+                
+                # Accounts section (same as original)
                 ft.Container(
                     content=ft.Column([
                         ft.Container(
@@ -120,7 +262,7 @@ class DashboardView:
                     margin=ft.margin.only(bottom=20)
                 ),
                 
-                # Upcoming section
+                # Upcoming section (same as original)
                 ft.Container(
                     content=ft.Column([
                         ft.Container(
@@ -131,7 +273,7 @@ class DashboardView:
                     ]),
                 ),
                 
-                # Refresh button
+                # Refresh button (same as original)
                 ft.Container(
                     content=ft.ElevatedButton(
                         "Refresh Dashboard",
@@ -146,6 +288,7 @@ class DashboardView:
         )
     
     def _create_metric_card(self, title, value, subtitle=None):
+        """Create a metric card (same as original)"""
         return ft.Card(
             content=ft.Container(
                 content=ft.Column([
@@ -159,11 +302,11 @@ class DashboardView:
         )
     
     def _go_to_pending(self, e):
-        """Navigate to pending transactions page"""
+        """Navigate to pending transactions page (same as original)"""
         self.page.go("/pending")
     
     def _refresh_clicked(self, e):
-        """Refresh the dashboard data"""
+        """Refresh the dashboard data (same as original)"""
         self.update_data()
         self.page.snack_bar = ft.SnackBar(
             content=ft.Text("Dashboard refreshed"),
@@ -172,30 +315,182 @@ class DashboardView:
         self.page.snack_bar.open = True
         self.page.update()
     
+    def _create_sparkline_chart(self, data, value_key="value", color=ft.colors.BLUE, height=200):
+        """Create a simple visual representation of data trend using Flet components"""
+        if not data:
+            return ft.Container(
+                content=ft.Text("No data available", color=ft.colors.GREY_400),
+                alignment=ft.alignment.center,
+                height=height
+            )
+        
+        # Extract values for plotting
+        values = [point[value_key] for point in data]
+        min_value = min(values)
+        max_value = max(values)
+        
+        # Normalize to chart height
+        range_value = max_value - min_value
+        if range_value == 0:
+            range_value = 1  # Avoid division by zero
+        
+        # Create points for line chart
+        chart_width = 700  # Fixed width
+        point_spacing = chart_width / (len(values) - 1) if len(values) > 1 else chart_width
+        chart_height = height - 40  # Leave space for labels
+        
+        # Create a list of points
+        points = []
+        for i, value in enumerate(values):
+            # Normalize y value (invert because Flet's coordinate system has y growing downward)
+            y = chart_height - ((value - min_value) / range_value * chart_height)
+            x = i * point_spacing
+            points.append(ft.Offset(x, y))
+        
+        # Create bars for bar chart (for savings)
+        max_bar_height = chart_height
+        bar_spacing = 5
+        bar_width = (chart_width / len(values)) - bar_spacing
+        
+        bars = []
+        for i, value in enumerate(values):
+            # Normalize bar height
+            bar_height = (value / max_value) * max_bar_height if max_value > 0 else 0
+            
+            bars.append(
+                ft.Container(
+                    width=bar_width,
+                    height=bar_height,
+                    bgcolor=color,
+                    border_radius=ft.border_radius.only(top_left=5, top_right=5),
+                    # Position at the bottom
+                    margin=ft.margin.only(bottom=0, top=max_bar_height - bar_height)
+                )
+            )
+        
+        # Create the chart components
+        title = data[0].get("month", "")
+        last_title = data[-1].get("month", "")
+        
+        # Use different chart types based on data
+        if "month" in data[0]:
+            # Bar chart for monthly data
+            chart = ft.Row(
+                bars,
+                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                width=chart_width
+            )
+        else:
+            # Line chart for daily data
+            chart = ft.Stack([
+                # Create grid lines
+                ft.Column([
+                    ft.Container(
+                        height=1,
+                        width=chart_width,
+                        bgcolor=ft.colors.GREY_300
+                    ),
+                    ft.Container(
+                        height=chart_height/2 - 1,
+                        width=chart_width
+                    ),
+                    ft.Container(
+                        height=1,
+                        width=chart_width,
+                        bgcolor=ft.colors.GREY_300
+                    ),
+                    ft.Container(
+                        height=chart_height/2 - 1,
+                        width=chart_width
+                    ),
+                    ft.Container(
+                        height=1,
+                        width=chart_width,
+                        bgcolor=ft.colors.GREY_300
+                    ),
+                ]),
+                
+                # Create line
+                ft.ShaderMask(
+                    content=ft.Container(width=chart_width, height=chart_height),
+                    blend_mode=ft.BlendMode.SRC_IN,
+                    shader=ft.LinearGradient(
+                        begin=ft.Alignment(-0.5, 0),
+                        end=ft.Alignment(1, 0),
+                        colors=[color, color],
+                        stops=[0.0, 1.0],
+                    ),
+                    child=ft.ClipPath(
+                        clip_behavior=ft.ClipBehavior.HARD_EDGE,
+                        clip_path=ft.Path([
+                            # Move to the start point
+                            ft.PathMoveTo(points[0].x, points[0].y),
+                            # Draw lines to each point
+                            *[ft.PathLineTo(p.x, p.y) for p in points[1:]],
+                            # Complete the path by going to the bottom right, then bottom left, then back to start
+                            ft.PathLineTo(points[-1].x, chart_height),
+                            ft.PathLineTo(points[0].x, chart_height),
+                            ft.PathLineTo(points[0].x, points[0].y),
+                        ]),
+                        content=ft.Container(
+                            width=chart_width,
+                            height=chart_height,
+                            opacity=0.3
+                        )
+                    )
+                )
+            ])
+        
+        # Create the axis labels
+        labels = ft.Row([
+            ft.Text(title, size=12, color=ft.colors.GREY_700),
+            ft.Container(expand=True),
+            ft.Text(last_title, size=12, color=ft.colors.GREY_700),
+        ], width=chart_width)
+        
+        # Create the chart with labels
+        return ft.Column([
+            chart,
+            labels,
+            ft.Row([
+                ft.Text(f"Min: {min_value:.2f} CHF", size=12, color=ft.colors.GREY_700),
+                ft.Container(expand=True),
+                ft.Text(f"Max: {max_value:.2f} CHF", size=12, color=ft.colors.GREY_700),
+            ], width=chart_width)
+        ])
+    
     def update_data(self):
         """Update dashboard with latest data from database"""
-        # Update metrics
+        # Original metrics update code
         net_worth_data = self.db.get_net_worth()
         liquidity = self.db.get_liquidity()
         savings_data = self.db.get_savings_stats()
         
-        self.liquidity_card.content.content.controls[1].value = f"{liquidity:.2f} CHF"
-        self.net_worth_card.content.content.controls[1].value = f"{net_worth_data['net_worth']:.2f} CHF"
-        self.savings_card.content.content.controls[1].value = f"{savings_data['total_balance']:.2f} CHF"
-        self.monthly_savings_card.content.content.controls[1].value = f"{savings_data['month_contribution']:.2f} CHF"
+        # Get chart data from data provider
+        dashboard_data = self.data_provider.get_dashboard_data()
         
-        # Generate color based on value
-        if net_worth_data['net_worth'] >= 0:
-            self.net_worth_card.content.content.controls[1].color = ft.colors.GREEN
-        else:
-            self.net_worth_card.content.content.controls[1].color = ft.colors.RED
-            
-        if savings_data['month_contribution'] >= 0:
-            self.monthly_savings_card.content.content.controls[1].color = ft.colors.GREEN
-        else:
-            self.monthly_savings_card.content.content.controls[1].color = ft.colors.RED
+        # Update liquidity chart
+        liquidity_chart = self._create_sparkline_chart(
+            dashboard_data["liquidity_trend"], 
+            color=ft.colors.BLUE
+        )
+        self.liquidity_chart_container.content.controls[2] = liquidity_chart
         
-        # Update accounts summary
+        # Update net worth chart
+        net_worth_chart = self._create_sparkline_chart(
+            dashboard_data["net_worth_trend"], 
+            color=ft.colors.GREEN
+        )
+        self.net_worth_chart_container.content.controls[2] = net_worth_chart
+        
+        # Update savings chart
+        savings_chart = self._create_sparkline_chart(
+            dashboard_data["monthly_savings"], 
+            color=ft.colors.PURPLE
+        )
+        self.savings_chart_container.content.controls[2] = savings_chart
+        
+        # Original code for updating accounts summary
         accounts = self.db.get_all_accounts()
         rows = []
         
@@ -223,7 +518,7 @@ class DashboardView:
         
         self.accounts_summary.rows = rows
         
-        # Update upcoming transactions (next 7 days)
+        # Original code for updating upcoming transactions
         today = date.today()
         seven_days = today.replace(day=today.day + 7)
         
