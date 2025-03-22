@@ -12,6 +12,7 @@ from ui.transactions import TransactionsView
 from ui.pending import PendingView
 from ui.debts import DebtsView
 from ui.subscriptions import SubscriptionsView
+from ui.transfers import TransfersView
 
 class FinanceTrackerApp:
     def __init__(self):
@@ -72,6 +73,11 @@ class FinanceTrackerApp:
                     selected_icon=ft.Icons.SUBSCRIPTIONS,
                     label="Subscriptions",
                 ),
+                ft.NavigationRailDestination(
+                    icon=ft.Icons.SYNC_ALT,
+                    selected_icon=ft.Icons.SYNC_ALT,
+                    label="Transfers",
+                ),
             ],
             on_change=self.nav_change,
         )
@@ -128,6 +134,8 @@ class FinanceTrackerApp:
             self.page.go("/debts")
         elif index == 5:
             self.page.go("/subscriptions")
+        elif index == 6:
+            self.page.go("/transfers")
     
     def route_change(self, route):
         """Handle route changes and update the UI"""
@@ -162,6 +170,11 @@ class FinanceTrackerApp:
         elif route.route == "/subscriptions":
             self.nav_rail.selected_index = 5
             self.current_view = SubscriptionsView(self.page, self.db)
+            self.content_area.content = self.current_view.view
+            
+        elif route.route == "/transfers":
+            self.nav_rail.selected_index = 6
+            self.current_view = TransfersView(self.page, self.db)
             self.content_area.content = self.current_view.view
         
         # Update the page
