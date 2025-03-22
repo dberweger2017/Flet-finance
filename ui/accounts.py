@@ -3,6 +3,7 @@
 import flet as ft
 from datetime import datetime
 from models import Account, Transaction
+import sys
 
 class AccountsView:
     def __init__(self, page, db):
@@ -168,7 +169,7 @@ class AccountsView:
         )
         
         # Return the main container
-        return ft.Container(
+        container = ft.Container(
             content=ft.Column([
                 ft.Container(
                     content=ft.Row([
@@ -184,6 +185,11 @@ class AccountsView:
             ]),
             padding=20,
         )
+        
+        # Check dialog initialization
+        self.check_dialog_initialization()
+        
+        return container
     
     def on_account_type_change(self, e):
         """Enable/disable credit limit field based on account type"""
@@ -527,29 +533,51 @@ class AccountsView:
             self.page.update()
     
     def show_transfer_dialog(self, e):
-        """Show dialog to transfer money between accounts"""
+        """Show dialog to transfer money between accounts with debugging"""
+        print("Transfer button clicked!", file=sys.stderr)
+        print(f"Dialog defined: {hasattr(self, 'transfer_dialog')}", file=sys.stderr)
+        
+        # Print dialog attributes if it exists
+        if hasattr(self, 'transfer_dialog'):
+            print(f"Dialog open attribute: {getattr(self.transfer_dialog, 'open', None)}", file=sys.stderr)
+        
+        # Print dropdown options
+        print(f"From dropdown options: {len(self.from_account_dropdown.options)}", file=sys.stderr)
+        print(f"To dropdown options: {len(self.to_account_dropdown.options)}", file=sys.stderr)
+        
         # Reset fields
         self.transfer_amount_field.value = ""
         self.transfer_description_field.value = ""
         
         # Make sure we have populated the account dropdowns
         if not self.from_account_dropdown.options or not self.to_account_dropdown.options:
+            print("Reloading accounts to populate dropdowns", file=sys.stderr)
             self.load_accounts()  # This will populate the dropdown options
+        
+        # Print dropdown options after potential reload
+        print(f"From dropdown options after reload: {len(self.from_account_dropdown.options)}", file=sys.stderr)
+        print(f"To dropdown options after reload: {len(self.to_account_dropdown.options)}", file=sys.stderr)
         
         # Set default values for dropdowns if options exist
         if self.from_account_dropdown.options:
             self.from_account_dropdown.value = self.from_account_dropdown.options[0].key
+            print(f"Set from_account_dropdown value to: {self.from_account_dropdown.value}", file=sys.stderr)
         
         if len(self.to_account_dropdown.options) > 1:
             # Set to second account if available (to avoid same account transfer)
             self.to_account_dropdown.value = self.to_account_dropdown.options[1].key
+            print(f"Set to_account_dropdown value to second option: {self.to_account_dropdown.value}", file=sys.stderr)
         elif self.to_account_dropdown.options:
             self.to_account_dropdown.value = self.to_account_dropdown.options[0].key
+            print(f"Set to_account_dropdown value to first option: {self.to_account_dropdown.value}", file=sys.stderr)
         
         # Show dialog
+        print("About to set dialog and open it", file=sys.stderr)
         self.page.dialog = self.transfer_dialog
         self.page.dialog.open = True
+        print("Dialog set to open, updating page", file=sys.stderr)
         self.page.update()
+        print("Page updated", file=sys.stderr)
     
     def close_transfer_dialog(self, e):
         """Close the transfer dialog"""
@@ -599,3 +627,25 @@ class AccountsView:
             self.page.snack_bar = ft.SnackBar(content=ft.Text(str(e) or "Please enter valid transfer details"))
             self.page.snack_bar.open = True
             self.page.update()
+
+    def check_dialog_initialization(self):
+        """Debug function to check if dialogs are properly initialized"""
+        print("Checking dialog initialization:", file=sys.stderr)
+        print(f"Has transfer_dialog attribute: {hasattr(self, 'transfer_dialog')}", file=sys.stderr)
+        print(f"Has transfer_amount_field attribute: {hasattr(self, 'transfer_amount_field')}", file=sys.stderr)
+        print(f"Has from_account_dropdown attribute: {hasattr(self, 'from_account_dropdown')}", file=sys.stderr)
+        print(f"Has to_account_dropdown attribute: {hasattr(self, 'to_account_dropdown')}", file=sys.stderr)
+        
+        # Check if the button is correctly configured
+        if hasattr(self, 'view') and isinstance(self.view, ft.Container):
+            content = self.view.content
+            if isinstance(content, ft.Column) and len(content.controls) > 0:
+                header_container = content.controls[0]
+                if isinstance(header_container, ft.Container) and isinstance(header_container.content, ft.Row):
+                    row = header_container.content
+                    for control in row.controls:
+                        if isinstance(control, ft.ElevatedButton) and control.text == "Transfer Money":
+                            print("Found Transfer Money button", file=sys.stderr)
+                            print(f"Button on_click: {control.on_click}", file=sys.stderr)
+        else:
+            print("View structure not as expected", file=sys.stderr)

@@ -155,7 +155,7 @@ class SubscriptionsView:
             ]),
             padding=20,
             # Make sure container fills available width
-            width=ft.width.fill,
+            expand=True,
         )
     
     def load_accounts_dropdown(self):
