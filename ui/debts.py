@@ -14,6 +14,9 @@ class DebtsView:
     def build(self):
         """Build the debts management UI"""
         # Tabs for payable and receivable debts
+        self.payable_list = ft.ListView(expand=1, spacing=10, padding=10)
+        self.receivable_list = ft.ListView(expand=1, spacing=10, padding=10)
+        
         self.tab_bar = ft.Tabs(
             selected_index=0,
             animation_duration=300,
@@ -23,7 +26,7 @@ class DebtsView:
                     icon=ft.icons.ARROW_UPWARD,
                     content=ft.Column([
                         ft.Container(height=20),
-                        self.payable_list = ft.ListView(expand=1, spacing=10, padding=10),
+                        self.payable_list,
                     ])
                 ),
                 ft.Tab(
@@ -31,7 +34,7 @@ class DebtsView:
                     icon=ft.icons.ARROW_DOWNWARD,
                     content=ft.Column([
                         ft.Container(height=20),
-                        self.receivable_list = ft.ListView(expand=1, spacing=10, padding=10),
+                        self.receivable_list,
                     ])
                 ),
             ],

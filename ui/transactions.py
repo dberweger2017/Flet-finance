@@ -9,18 +9,18 @@ class TransactionsView:
         self.page = page
         self.db = db
         self.categories = ["Food", "Transport", "Housing", "Entertainment", "Utilities", "Healthcare", "Shopping", "Other"]
-        self.view = self.build()
-        self.load_transactions()
-    
-    def build(self):
-        """Build the transactions management UI"""
-        # Transactions list
+        # Initialize all UI components that need to be referenced later
         self.transactions_list = ft.ListView(
             expand=1,
             spacing=10,
             padding=20,
         )
-        
+        self.transactions_summary = ft.Text("Total: 0.00 CHF")
+        self.view = self.build()
+        self.load_transactions()
+    
+    def build(self):
+        """Build the transactions management UI"""
         # Filters section
         self.filter_start_date = ft.TextField(
             label="Start Date",
@@ -141,6 +141,16 @@ class TransactionsView:
             on_click=self.add_transaction,
         )
         
+        # Create the transaction history header
+        transaction_history_header = ft.Container(
+            content=ft.Row([
+                ft.Text("Transaction History", size=20, weight=ft.FontWeight.BOLD),
+                ft.Container(expand=True),
+                self.transactions_summary,
+            ]),
+            margin=ft.margin.only(left=20, right=20, bottom=10),
+        )
+        
         # Add transaction form
         self.transaction_form = ft.Container(
             content=ft.Column([
@@ -199,23 +209,13 @@ class TransactionsView:
                     border_radius=10,
                     margin=ft.margin.only(bottom=20),
                 ),
-                # Create summary text first
-                self.transactions_summary = ft.Text("Total: 0.00 CHF")
-                
-                # Use it in the Row
-                ft.Container(
-                    content=ft.Row([
-                        ft.Text("Transaction History", size=20, weight=ft.FontWeight.BOLD),
-                        ft.Container(expand=True),
-                        self.transactions_summary,
-                    ]),
-                    margin=ft.margin.only(left=20, right=20, bottom=10),
-                ),
+                transaction_history_header,
                 self.transactions_list,
             ]),
             padding=20,
         )
     
+    # The rest of the methods remain unchanged...
     def on_transaction_type_change(self, e):
         """Update account dropdown label based on transaction type"""
         if self.transaction_type_dropdown.value == "spending":
