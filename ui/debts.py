@@ -250,7 +250,8 @@ class DebtsView:
                         title=ft.Text(
                             debt.description,
                             size=16,
-                            weight=ft.FontWeight.BOLD
+                            weight=ft.FontWeight.BOLD,
+                            no_wrap=True,
                         ),
                         subtitle=ft.Text(f"Due: {due_date_str}"),
                         trailing=ft.Row([
@@ -273,10 +274,11 @@ class DebtsView:
                                 color=amount_color,
                             ),
                         ]),
+                        content_padding=ft.padding.all(10),
                     ),
                     ft.Container(
                         content=ft.Column([
-                            ft.Text(linked_account_name),
+                            ft.Text(linked_account_name, no_wrap=True),
                             ft.Text(f"Paid: {paid_amount:.2f} {debt.currency} ({paid_percentage:.1f}%)"),
                             ft.Text(f"Remaining: {remaining_amount:.2f} {debt.currency}"),
                             ft.ProgressBar(
@@ -294,11 +296,12 @@ class DebtsView:
                             edit_button,
                             delete_button,
                             history_button,
-                        ], alignment=ft.MainAxisAlignment.END),
+                        ], alignment=ft.MainAxisAlignment.END, wrap=True),
                         padding=ft.padding.only(right=10, bottom=10, top=10),
                     ),
                 ]),
                 padding=10,
+                expand=True,
             ),
         )
     

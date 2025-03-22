@@ -220,77 +220,47 @@ class SubscriptionsView:
     
     def _create_subscription_card(self, subscription, accounts):
         """Create a card UI for a subscription"""
-        # Determine icon and color based on category
+        # Determine icon and color based on status
         icon_name = ft.Icons.SUBSCRIPTIONS
-        
-        if subscription.category:
-            if subscription.category.lower() == "entertainment":
-                icon_name = ft.Icons.MOVIE
-            elif subscription.category.lower() == "software":
-                icon_name = ft.Icons.COMPUTER
-            elif subscription.category.lower() == "streaming":
-                icon_name = ft.Icons.VIDEO_LIBRARY
-            elif subscription.category.lower() == "utilities":
-                icon_name = ft.Icons.HOME
-            elif subscription.category.lower() == "insurance":
-                icon_name = ft.Icons.SECURITY
-        
         icon_color = ft.colors.BLUE
         
-        # Status indicator
-        status_color = ft.colors.GREEN
-        status_text = "Active"
         if subscription.status == "paused":
-            status_color = ft.colors.AMBER
-            status_text = "Paused"
+            icon_color = ft.colors.ORANGE
         elif subscription.status == "canceled":
-            status_color = ft.colors.GREY
-            status_text = "Canceled"
+            icon_color = ft.colors.RED
         
-        # Format next payment date
-        next_payment_date_str = subscription.next_payment_date.strftime("%Y-%m-%d")
+        # Format date
+        next_payment_str = subscription.next_payment_date.strftime("%Y-%m-%d")
         
         # Get linked account name
         linked_account_name = "Not linked to any account"
         if subscription.linked_account_id and subscription.linked_account_id in accounts:
-            linked_account_name = f"Paid from: {accounts[subscription.linked_account_id].name}"
+            linked_account_name = f"Linked to: {accounts[subscription.linked_account_id].name}"
         
-        # Format frequency text
-        frequency_text = subscription.frequency.capitalize()
-        
-        # Action buttons based on status
-        action_buttons = []
-        
-        if subscription.status == "active":
-            pause_button = ft.OutlinedButton(
-                "Pause",
-                icon=ft.Icons.PAUSE,
-                on_click=lambda e, sid=subscription.id: self.toggle_subscription_status(sid, "paused"),
-            )
-            action_buttons.append(pause_button)
-        elif subscription.status == "paused":
-            resume_button = ft.OutlinedButton(
-                "Resume",
-                icon=ft.Icons.PLAY_ARROW,
-                on_click=lambda e, sid=subscription.id: self.toggle_subscription_status(sid, "active"),
-            )
-            action_buttons.append(resume_button)
+        # Action buttons
+        toggle_status_button = ft.ElevatedButton(
+            "Pause" if subscription.status == "active" else "Resume",
+            icon=ft.Icons.PAUSE if subscription.status == "active" else ft.Icons.PLAY_ARROW,
+            on_click=lambda e, sid=subscription.id: self.toggle_subscription_status(
+                sid, "paused" if subscription.status == "active" else "active"
+            ),
+            disabled=subscription.status == "canceled",
+        )
         
         edit_button = ft.OutlinedButton(
             "Edit",
             icon=ft.Icons.EDIT,
             on_click=lambda e, sid=subscription.id: self.edit_subscription(sid),
+            disabled=subscription.status == "canceled",
         )
-        action_buttons.append(edit_button)
         
         delete_button = ft.TextButton(
             "Delete",
             icon=ft.Icons.DELETE,
             on_click=lambda e, sid=subscription.id: self.delete_subscription(sid),
         )
-        action_buttons.append(delete_button)
         
-        # Create subscription card with fixed layout
+        # Create subscription card
         return ft.Card(
             content=ft.Container(
                 content=ft.Column([
@@ -300,23 +270,20 @@ class SubscriptionsView:
                             subscription.name,
                             size=16,
                             weight=ft.FontWeight.BOLD,
-                            # Ensure text doesn't wrap strangely
                             no_wrap=True,
                         ),
-                        subtitle=ft.Text(
-                            f"Next payment: {next_payment_date_str} • {frequency_text}",
-                            # Ensure text doesn't wrap strangely
-                            no_wrap=True,
-                        ),
+                        subtitle=ft.Text(f"Next payment: {next_payment_str}"),
                         trailing=ft.Row([
                             ft.Container(
                                 ft.Text(
-                                    status_text,
+                                    subscription.status.capitalize(),
                                     color=ft.colors.WHITE,
-                                    size=12, 
+                                    size=12,
                                     weight=ft.FontWeight.BOLD,
                                 ),
-                                bgcolor=status_color,
+                                bgcolor=ft.colors.BLUE if subscription.status == "active" else 
+                                       ft.colors.ORANGE if subscription.status == "paused" else 
+                                       ft.colors.RED,
                                 border_radius=5,
                                 padding=5,
                             ),
@@ -325,42 +292,31 @@ class SubscriptionsView:
                                 f"{subscription.amount:.2f} {subscription.currency}",
                                 size=16,
                                 weight=ft.FontWeight.BOLD,
+                                color=ft.colors.RED,
                             ),
                         ]),
-                        # Ensure the ListTile has proper width
                         content_padding=ft.padding.all(10),
                     ),
                     ft.Container(
                         content=ft.Column([
-                            ft.Text(
-                                linked_account_name,
-                                no_wrap=True,
-                            ),
-                            ft.Text(
-                                f"Category: {subscription.category or 'Not categorized'}",
-                                no_wrap=True,
-                            ),
+                            ft.Text(linked_account_name, no_wrap=True),
+                            ft.Text(f"Frequency: {subscription.frequency.capitalize()}"),
+                            ft.Text(f"Category: {subscription.category or 'Not categorized'}"),
                         ]),
                         padding=ft.padding.symmetric(horizontal=15),
-                        # Ensure the container has proper width
-                        width=ft.width.fill,
                     ),
                     ft.Container(
-                        content=ft.Row(
-                            action_buttons,
-                            alignment=ft.MainAxisAlignment.END,
-                            # Wrap the button row if needed
-                            wrap=True,
-                        ),
+                        content=ft.Row([
+                            toggle_status_button,
+                            edit_button,
+                            delete_button,
+                        ], alignment=ft.MainAxisAlignment.END, wrap=True),
                         padding=ft.padding.only(right=10, bottom=10, top=10),
                     ),
                 ]),
                 padding=10,
-                # Make sure the container fills available width
-                width=ft.width.fill,
+                expand=True,
             ),
-            # Ensure the card stretches properly
-            width=ft.width.fill,
         )
     
     def add_subscription(self, e):
