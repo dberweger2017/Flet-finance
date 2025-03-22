@@ -181,12 +181,20 @@ class DebtsView:
         icon_color = ft.colors.RED if is_payable else ft.colors.GREEN
         amount_color = ft.colors.RED if is_payable else ft.colors.GREEN
         
+        # Calculate paid and remaining amounts
+        paid_amount = debt.get_paid_amount()
+        remaining_amount = debt.get_remaining_amount()
+        paid_percentage = (paid_amount / debt.amount) * 100 if debt.amount > 0 else 0
+        
         # Status indicator
         status_color = ft.colors.GREEN
         status_text = "Paid"
         if debt.status == "pending":
             status_color = ft.colors.BLUE
             status_text = "Pending"
+        elif debt.status == "partial":
+            status_color = ft.colors.ORANGE
+            status_text = "Partial"
         elif debt.status == "overdue":
             status_color = ft.colors.RED
             status_text = "Overdue"
@@ -207,6 +215,13 @@ class DebtsView:
             disabled=debt.status == "paid",
         )
         
+        partial_payment_button = ft.OutlinedButton(
+            "Partial Payment",
+            icon=ft.Icons.PAYMENTS,
+            on_click=lambda e, did=debt.id: self.show_partial_payment_dialog(did),
+            disabled=debt.status == "paid",
+        )
+        
         edit_button = ft.OutlinedButton(
             "Edit",
             icon=ft.Icons.EDIT,
@@ -218,6 +233,12 @@ class DebtsView:
             "Delete",
             icon=ft.Icons.DELETE,
             on_click=lambda e, did=debt.id: self.delete_debt(did),
+        )
+        
+        history_button = ft.TextButton(
+            "History",
+            icon=ft.Icons.HISTORY,
+            on_click=lambda e, did=debt.id: self.view_payment_history(did),
         )
         
         # Create debt card
@@ -254,14 +275,25 @@ class DebtsView:
                         ]),
                     ),
                     ft.Container(
-                        content=ft.Text(linked_account_name),
+                        content=ft.Column([
+                            ft.Text(linked_account_name),
+                            ft.Text(f"Paid: {paid_amount:.2f} {debt.currency} ({paid_percentage:.1f}%)"),
+                            ft.Text(f"Remaining: {remaining_amount:.2f} {debt.currency}"),
+                            ft.ProgressBar(
+                                value=paid_percentage / 100,
+                                bgcolor=ft.colors.GREY_300,
+                                color=ft.colors.GREEN if is_payable else ft.colors.BLUE,
+                            ),
+                        ]),
                         padding=ft.padding.symmetric(horizontal=15),
                     ),
                     ft.Container(
                         content=ft.Row([
                             mark_paid_button,
+                            partial_payment_button,
                             edit_button,
                             delete_button,
+                            history_button,
                         ], alignment=ft.MainAxisAlignment.END),
                         padding=ft.padding.only(right=10, bottom=10, top=10),
                     ),
@@ -564,6 +596,203 @@ class DebtsView:
             actions=[
                 ft.TextButton("Cancel", on_click=cancel_delete),
                 ft.TextButton("Delete", on_click=confirm_delete),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        self.page.dialog.open = True
+        self.page.update()
+
+    def show_partial_payment_dialog(self, debt_id):
+        """Show dialog to make a partial payment on a debt"""
+        debt = self.db.get_debt(debt_id)
+        if not debt:
+            return
+        
+        if not debt.linked_account_id:
+            # Show account selection dialog if no linked account
+            self.show_account_selection_dialog_for_partial(debt_id)
+        else:
+            # Otherwise, show partial payment dialog directly
+            self.show_partial_payment_amount_dialog(debt_id, debt.linked_account_id)
+
+    def show_account_selection_dialog_for_partial(self, debt_id):
+        """Show dialog to select account for partial payment"""
+        accounts = self.db.get_all_accounts()
+        account_options = []
+        
+        for account in accounts:
+            account_options.append(
+                ft.dropdown.Option(account.id, f"{account.name} ({account.currency})")
+            )
+        
+        if not account_options:
+            self.page.snack_bar = ft.SnackBar(content=ft.Text("No accounts available. Please create an account first."))
+            self.page.snack_bar.open = True
+            self.page.update()
+            return
+        
+        account_dropdown = ft.Dropdown(
+            label="Select Account",
+            options=account_options,
+            value=account_options[0].key,
+            width=300,
+        )
+        
+        def confirm_selection(e):
+            self.show_partial_payment_amount_dialog(debt_id, account_dropdown.value)
+            self.page.dialog.open = False
+            self.page.update()
+        
+        def cancel_selection(e):
+            self.page.dialog.open = False
+            self.page.update()
+        
+        # Show dialog
+        self.page.dialog = ft.AlertDialog(
+            title=ft.Text("Select Account for Payment"),
+            content=ft.Column([
+                ft.Text("Select the account to use for this payment:"),
+                account_dropdown,
+            ], tight=True),
+            actions=[
+                ft.TextButton("Cancel", on_click=cancel_selection),
+                ft.TextButton("Confirm", on_click=confirm_selection),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        self.page.dialog.open = True
+        self.page.update()
+
+    def show_partial_payment_amount_dialog(self, debt_id, account_id):
+        """Show dialog to enter partial payment amount"""
+        debt = self.db.get_debt(debt_id)
+        if not debt:
+            return
+        
+        # Update linked account if necessary
+        if debt.linked_account_id != account_id:
+            debt.linked_account_id = account_id
+            self.db.save_debt(debt)
+        
+        remaining = debt.get_remaining_amount()
+        
+        amount_field = ft.TextField(
+            label=f"Payment Amount (Max: {remaining:.2f} {debt.currency})",
+            value=str(remaining),
+            width=300,
+            keyboard_type=ft.KeyboardType.NUMBER,
+        )
+        
+        notes_field = ft.TextField(
+            label="Notes (Optional)",
+            width=300,
+        )
+        
+        def make_payment(e):
+            try:
+                amount = float(amount_field.value)
+                if amount <= 0:
+                    raise ValueError("Payment amount must be positive")
+                
+                if amount > remaining:
+                    raise ValueError(f"Payment amount exceeds remaining balance of {remaining:.2f} {debt.currency}")
+                
+                # Make the partial payment
+                transaction = debt.make_partial_payment(amount, notes=notes_field.value)
+                
+                if transaction:
+                    self.db.save_transaction(transaction)
+                    
+                    # Show success message
+                    self.page.snack_bar = ft.SnackBar(
+                        content=ft.Text("Partial payment recorded. A pending transaction has been created. Go to Pending Transactions to approve it.")
+                    )
+                    self.page.snack_bar.open = True
+                else:
+                    # Show error
+                    self.page.snack_bar = ft.SnackBar(content=ft.Text("Failed to create payment transaction"))
+                    self.page.snack_bar.open = True
+                
+                # Save updated debt
+                self.db.save_debt(debt)
+                
+                # Close dialog and reload
+                self.page.dialog.open = False
+                self.load_debts()
+            except ValueError as e:
+                # Show error
+                self.page.snack_bar = ft.SnackBar(content=ft.Text(str(e)))
+                self.page.snack_bar.open = True
+                self.page.update()
+        
+        def cancel_payment(e):
+            self.page.dialog.open = False
+            self.page.update()
+        
+        # Show dialog
+        self.page.dialog = ft.AlertDialog(
+            title=ft.Text("Make Partial Payment"),
+            content=ft.Column([
+                ft.Text(f"Debt: {debt.description}"),
+                ft.Text(f"Total Amount: {debt.amount:.2f} {debt.currency}"),
+                ft.Text(f"Already Paid: {debt.get_paid_amount():.2f} {debt.currency}"),
+                ft.Text(f"Remaining: {remaining:.2f} {debt.currency}"),
+                amount_field,
+                notes_field,
+            ], tight=True),
+            actions=[
+                ft.TextButton("Cancel", on_click=cancel_payment),
+                ft.TextButton("Make Payment", on_click=make_payment),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        self.page.dialog.open = True
+        self.page.update()
+
+    def view_payment_history(self, debt_id):
+        """Show dialog with payment history for a debt"""
+        debt = self.db.get_debt(debt_id)
+        if not debt or not debt.payment_history:
+            self.page.snack_bar = ft.SnackBar(content=ft.Text("No payment history available"))
+            self.page.snack_bar.open = True
+            self.page.update()
+            return
+        
+        # Create a data table for payment history
+        columns = [
+            ft.DataColumn(ft.Text("Date")),
+            ft.DataColumn(ft.Text("Amount")),
+            ft.DataColumn(ft.Text("Notes")),
+        ]
+        
+        rows = []
+        for payment in debt.payment_history:
+            rows.append(
+                ft.DataRow([
+                    ft.DataCell(ft.Text(payment["date"])),
+                    ft.DataCell(ft.Text(f"{payment['amount']:.2f} {debt.currency}")),
+                    ft.DataCell(ft.Text(payment.get("notes", ""))),
+                ])
+            )
+        
+        history_table = ft.DataTable(
+            columns=columns,
+            rows=rows,
+        )
+        
+        def close_dialog(e):
+            self.page.dialog.open = False
+            self.page.update()
+        
+        # Show dialog
+        self.page.dialog = ft.AlertDialog(
+            title=ft.Text(f"Payment History - {debt.description}"),
+            content=history_table,
+            actions=[
+                ft.TextButton("Close", on_click=close_dialog),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )

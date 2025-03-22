@@ -65,6 +65,7 @@ class Database:
             linked_account_id TEXT,
             status TEXT NOT NULL,
             currency TEXT NOT NULL,
+            payment_history TEXT,
             FOREIGN KEY (linked_account_id) REFERENCES accounts (id)
         )
         ''')

@@ -4,6 +4,8 @@ import sqlite3
 import uuid
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
+import json
+from decimal import Decimal
 
 
 class Account:
@@ -163,31 +165,105 @@ class Transaction:
 
 class Debt:
     def __init__(self, id=None, description="", amount=0.0, due_date=None, is_receivable=False, 
-                 linked_account_id=None, status="pending", currency="CHF"):
+                 linked_account_id=None, status="pending", currency="CHF", payment_history=None):
         self.id = id or str(uuid.uuid4())
         self.description = description
         self.amount = float(amount)
         self.due_date = due_date or datetime.now().date()
         if isinstance(self.due_date, str):
             self.due_date = datetime.strptime(self.due_date, "%Y-%m-%d").date()
-        self.is_receivable = is_receivable  # True if someone owes you, False if you owe someone
+        self.is_receivable = is_receivable
         self.linked_account_id = linked_account_id
-        self.status = status  # "pending", "paid", "overdue"
+        self.status = status  # "pending", "partial", "paid", "overdue"
         self.currency = currency
+        # Initialize payment history as an empty list if not provided
+        self.payment_history = payment_history or []
         
+    def get_paid_amount(self):
+        """Return the total amount paid so far"""
+        if not self.payment_history:
+            return 0.0
+        return sum(payment["amount"] for payment in self.payment_history)
+    
+    def get_remaining_amount(self):
+        """Return the remaining amount to be paid"""
+        return self.amount - self.get_paid_amount()
+        
+    def make_partial_payment(self, amount, transaction_date=None, notes=""):
+        """Make a partial payment and create corresponding transaction"""
+        if self.status == "paid":
+            return None
+            
+        if amount <= 0:
+            raise ValueError("Payment amount must be positive")
+            
+        remaining = self.get_remaining_amount()
+        if amount > remaining:
+            raise ValueError(f"Payment amount ({amount}) exceeds remaining amount ({remaining})")
+            
+        transaction_date = transaction_date or datetime.now().date()
+        
+        # Create transaction for partial payment
+        if self.is_receivable and self.linked_account_id:
+            # Create income transaction for receiving partial payment
+            transaction = Transaction(
+                date=transaction_date,
+                amount=amount,
+                description=f"Received partial payment for: {self.description}",
+                transaction_type="income",
+                to_account_id=self.linked_account_id,
+                status="pending"
+            )
+        elif not self.is_receivable and self.linked_account_id:
+            # Create spending transaction for making partial payment
+            transaction = Transaction(
+                date=transaction_date,
+                amount=amount,
+                description=f"Made partial payment for: {self.description}",
+                transaction_type="spending",
+                from_account_id=self.linked_account_id,
+                status="pending"
+            )
+        else:
+            return None
+            
+        # Add to payment history
+        payment_record = {
+            "date": transaction_date.isoformat(),
+            "amount": amount,
+            "notes": notes
+        }
+        self.payment_history.append(payment_record)
+        
+        # Update debt status
+        paid_amount = self.get_paid_amount()
+        if abs(paid_amount - self.amount) < 0.01:  # Account for floating point precision
+            self.status = "paid"
+        else:
+            self.status = "partial"
+            
+        return transaction
+
     def mark_as_paid(self, transaction_date=None):
-        """Creates a transaction to record debt payment"""
+        """Creates a transaction to record full debt payment"""
         if self.status == "paid":
             return None
             
         transaction_date = transaction_date or datetime.now().date()
+        remaining = self.get_remaining_amount()
         
+        if remaining <= 0:
+            # Already fully paid through partial payments
+            self.status = "paid"
+            return None
+            
+        # Create transaction for remaining amount
         if self.is_receivable and self.linked_account_id:
             # Create income transaction
             transaction = Transaction(
                 date=transaction_date,
-                amount=self.amount,
-                description=f"Received payment for: {self.description}",
+                amount=remaining,
+                description=f"Received final payment for: {self.description}",
                 transaction_type="income",
                 to_account_id=self.linked_account_id,
                 status="pending"
@@ -196,8 +272,8 @@ class Debt:
             # Create spending transaction
             transaction = Transaction(
                 date=transaction_date,
-                amount=self.amount,
-                description=f"Paid debt: {self.description}",
+                amount=remaining,
+                description=f"Paid remaining balance for: {self.description}",
                 transaction_type="spending",
                 from_account_id=self.linked_account_id,
                 status="pending"
@@ -205,6 +281,14 @@ class Debt:
         else:
             return None
             
+        # Add to payment history
+        payment_record = {
+            "date": transaction_date.isoformat(),
+            "amount": remaining,
+            "notes": "Final payment"
+        }
+        self.payment_history.append(payment_record)
+        
         self.status = "paid"
         return transaction
 
@@ -218,12 +302,20 @@ class Debt:
             "is_receivable": 1 if self.is_receivable else 0,
             "linked_account_id": self.linked_account_id,
             "status": self.status,
-            "currency": self.currency
+            "currency": self.currency,
+            "payment_history": json.dumps(self.payment_history)
         }
     
     @classmethod
     def from_dict(cls, data):
         """Create debt from dictionary data"""
+        payment_history = []
+        if "payment_history" in data and data["payment_history"]:
+            try:
+                payment_history = json.loads(data["payment_history"])
+            except (json.JSONDecodeError, TypeError):
+                payment_history = []
+                
         return cls(
             id=data["id"],
             description=data["description"],
@@ -232,7 +324,8 @@ class Debt:
             is_receivable=bool(data["is_receivable"]),
             linked_account_id=data["linked_account_id"],
             status=data["status"],
-            currency=data["currency"]
+            currency=data["currency"],
+            payment_history=payment_history
         )
 
 
