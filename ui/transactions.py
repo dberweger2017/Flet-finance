@@ -11,9 +11,10 @@ class TransactionsView:
         self.categories = ["Food", "Transport", "Housing", "Entertainment", "Utilities", "Healthcare", "Shopping", "Other"]
         # Initialize all UI components that need to be referenced later
         self.transactions_list = ft.ListView(
-            expand=1,
+            expand=False,
             spacing=10,
             padding=20,
+            height=400,  # Fixed height to allow parent scrolling
         )
         self.transactions_summary = ft.Text("Total: 0.00 CHF")
         self.view = self.build()

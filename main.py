@@ -81,6 +81,13 @@ class FinanceTrackerApp:
             expand=True,
         )
         
+        # Create scrollable content wrapper
+        self.scrollable_content = ft.Column(
+            [self.content_area],
+            expand=True,
+            scroll=ft.ScrollMode.AUTO,
+        )
+        
         # Set up app layout
         self.page.add(
             ft.Row(
@@ -93,7 +100,7 @@ class FinanceTrackerApp:
                         elevation=1,
                     ),
                     ft.VerticalDivider(width=1),
-                    self.content_area,
+                    self.scrollable_content,
                 ],
                 expand=True,
             )

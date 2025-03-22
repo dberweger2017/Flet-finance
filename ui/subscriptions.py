@@ -16,9 +16,10 @@ class SubscriptionsView:
         """Build the subscriptions management UI"""
         # Subscriptions list
         self.subscriptions_list = ft.ListView(
-            expand=1,
+            expand=False,
             spacing=10,
             padding=20,
+            height=400,  # Fixed height to allow parent scrolling
         )
         
         # Empty state message
