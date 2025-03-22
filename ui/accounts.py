@@ -143,21 +143,6 @@ class AccountsView:
             label="Description (optional)",
         )
         
-        self.transfer_dialog = ft.AlertDialog(
-            title=ft.Text("Transfer Between Accounts"),
-            content=ft.Column([
-                self.transfer_amount_field,
-                self.from_account_dropdown,
-                self.to_account_dropdown,
-                self.transfer_description_field,
-            ], tight=True, spacing=10),
-            actions=[
-                ft.TextButton("Cancel", on_click=self.close_transfer_dialog),
-                ft.TextButton("Transfer", on_click=self.perform_transfer),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
-        
         # Setup event handler for account type changes
         self.account_type_dropdown.on_change = self.on_account_type_change
         
@@ -533,17 +518,8 @@ class AccountsView:
             self.page.update()
     
     def show_transfer_dialog(self, e):
-        """Show dialog to transfer money between accounts with debugging"""
+        """Show dialog to transfer money between accounts"""
         print("Transfer button clicked!", file=sys.stderr)
-        print(f"Dialog defined: {hasattr(self, 'transfer_dialog')}", file=sys.stderr)
-        
-        # Print dialog attributes if it exists
-        if hasattr(self, 'transfer_dialog'):
-            print(f"Dialog open attribute: {getattr(self.transfer_dialog, 'open', None)}", file=sys.stderr)
-        
-        # Print dropdown options
-        print(f"From dropdown options: {len(self.from_account_dropdown.options)}", file=sys.stderr)
-        print(f"To dropdown options: {len(self.to_account_dropdown.options)}", file=sys.stderr)
         
         # Reset fields
         self.transfer_amount_field.value = ""
@@ -553,10 +529,6 @@ class AccountsView:
         if not self.from_account_dropdown.options or not self.to_account_dropdown.options:
             print("Reloading accounts to populate dropdowns", file=sys.stderr)
             self.load_accounts()  # This will populate the dropdown options
-        
-        # Print dropdown options after potential reload
-        print(f"From dropdown options after reload: {len(self.from_account_dropdown.options)}", file=sys.stderr)
-        print(f"To dropdown options after reload: {len(self.to_account_dropdown.options)}", file=sys.stderr)
         
         # Set default values for dropdowns if options exist
         if self.from_account_dropdown.options:
@@ -571,13 +543,27 @@ class AccountsView:
             self.to_account_dropdown.value = self.to_account_dropdown.options[0].key
             print(f"Set to_account_dropdown value to first option: {self.to_account_dropdown.value}", file=sys.stderr)
         
-        # Show dialog
-        print("About to set dialog and open it", file=sys.stderr)
-        self.page.dialog = self.transfer_dialog
+        # Create a new dialog each time
+        transfer_dialog = ft.AlertDialog(
+            title=ft.Text("Transfer Between Accounts"),
+            content=ft.Column([
+                self.transfer_amount_field,
+                self.from_account_dropdown,
+                self.to_account_dropdown,
+                self.transfer_description_field,
+            ], tight=True, spacing=10),
+            actions=[
+                ft.TextButton("Cancel", on_click=self.close_transfer_dialog),
+                ft.TextButton("Transfer", on_click=self.perform_transfer),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        print("About to open dialog", file=sys.stderr)
+        self.page.dialog = transfer_dialog
         self.page.dialog.open = True
-        print("Dialog set to open, updating page", file=sys.stderr)
         self.page.update()
-        print("Page updated", file=sys.stderr)
+        print("Dialog should be visible now", file=sys.stderr)
     
     def close_transfer_dialog(self, e):
         """Close the transfer dialog"""
