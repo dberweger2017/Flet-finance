@@ -378,10 +378,13 @@ class TransactionsView:
                 account_info = f"Account: {to_account_name}"
         
         # Delete button
+        def on_delete_click(e, transaction_id=transaction.id):
+            self.delete_transaction(transaction_id)
+
         delete_button = ft.IconButton(
             icon=ft.Icons.DELETE,
             tooltip="Delete transaction",
-            on_click=lambda e, tid=transaction.id: self.delete_transaction(tid),
+            on_click=lambda e: on_delete_click(e, transaction.id),
         )
         
         # Create transaction card
@@ -488,15 +491,26 @@ class TransactionsView:
     
     def delete_transaction(self, transaction_id):
         """Delete a transaction after confirmation"""
+        # Store the transaction ID in an instance variable to ensure it's available in the callbacks
+        self.transaction_to_delete = transaction_id
+        
         def confirm_delete(e):
-            self.db.delete_transaction(transaction_id)
-            self.page.snack_bar = ft.SnackBar(content=ft.Text("Transaction deleted"))
-            self.page.snack_bar.open = True
-            self.load_transactions()  # Reload with current filters
+            # Use the stored transaction ID
+            if hasattr(self, 'transaction_to_delete'):
+                self.db.delete_transaction(self.transaction_to_delete)
+                self.page.snack_bar = ft.SnackBar(content=ft.Text("Transaction deleted"))
+                self.page.snack_bar.open = True
+                # Reload with current filters
+                self.load_transactions()
+                # Clean up
+                delattr(self, 'transaction_to_delete')
             self.page.dialog.open = False
             self.page.update()
         
         def cancel_delete(e):
+            # Clean up
+            if hasattr(self, 'transaction_to_delete'):
+                delattr(self, 'transaction_to_delete')
             self.page.dialog.open = False
             self.page.update()
         
