@@ -1,7 +1,7 @@
 # ui/dashboard.py - Finance Tracker App/ui/dashboard.py
 
 import flet as ft
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 import calendar
 import json
 from dashboard_data import DashboardDataProvider
@@ -16,7 +16,7 @@ class DashboardView:
         self.update_data()
         
     def build(self):
-        """Build the dashboard UI with chart visualizations"""
+        """Build the dashboard UI with simple chart visualizations"""
         # Create metrics cards (same as the original)
         self.liquidity_card = self._create_metric_card(
             "Current Liquidity",
@@ -42,7 +42,7 @@ class DashboardView:
             f"Savings in {calendar.month_name[datetime.now().month]}"
         )
         
-        # Create simple chart visualizations using Flet's built-in components
+        # Create simple chart visualizations using basic Flet components
         
         # Liquidity Chart Container
         self.liquidity_chart_title = ft.Text(
@@ -56,7 +56,11 @@ class DashboardView:
                 self.liquidity_chart_title,
                 ft.Text("Daily amount available for immediate spending", size=12, color=ft.colors.GREY_600),
                 # Placeholder for the chart - will be populated in update_data
-                ft.Container(height=200)
+                ft.Container(
+                    content=ft.Text("Loading chart data...", color=ft.colors.GREY_400),
+                    alignment=ft.alignment.center,
+                    height=200
+                )
             ]),
             margin=ft.margin.only(top=10, bottom=20),
             padding=10,
@@ -78,7 +82,11 @@ class DashboardView:
                 self.net_worth_chart_title,
                 ft.Text("Daily assets minus liabilities over time", size=12, color=ft.colors.GREY_600),
                 # Placeholder for the chart - will be populated in update_data
-                ft.Container(height=200)
+                ft.Container(
+                    content=ft.Text("Loading chart data...", color=ft.colors.GREY_400),
+                    alignment=ft.alignment.center,
+                    height=200
+                )
             ]),
             margin=ft.margin.only(top=10, bottom=20),
             padding=10,
@@ -100,7 +108,11 @@ class DashboardView:
                 self.savings_chart_title,
                 ft.Text("Amount saved each month", size=12, color=ft.colors.GREY_600),
                 # Placeholder for the chart - will be populated in update_data
-                ft.Container(height=200)
+                ft.Container(
+                    content=ft.Text("Loading chart data...", color=ft.colors.GREY_400),
+                    alignment=ft.alignment.center,
+                    height=200
+                )
             ]),
             margin=ft.margin.only(top=10, bottom=20),
             padding=10,
@@ -315,8 +327,8 @@ class DashboardView:
         self.page.snack_bar.open = True
         self.page.update()
     
-    def _create_sparkline_chart(self, data, value_key="value", color=ft.colors.BLUE, height=200):
-        """Create a simple visual representation of data trend using Flet components"""
+    def _create_simple_chart(self, data, value_key="value", color=ft.colors.BLUE, height=200):
+        """Create a simple visual representation of data using basic Flet containers"""
         if not data:
             return ft.Container(
                 content=ft.Text("No data available", color=ft.colors.GREY_400),
@@ -329,134 +341,111 @@ class DashboardView:
         min_value = min(values)
         max_value = max(values)
         
-        # Normalize to chart height
-        range_value = max_value - min_value
-        if range_value == 0:
-            range_value = 1  # Avoid division by zero
+        # Create a simple data visualization using a row of containers with different heights
+        chart_width = 700
         
-        # Create points for line chart
-        chart_width = 700  # Fixed width
-        point_spacing = chart_width / (len(values) - 1) if len(values) > 1 else chart_width
-        chart_height = height - 40  # Leave space for labels
-        
-        # Create a list of points
-        points = []
-        for i, value in enumerate(values):
-            # Normalize y value (invert because Flet's coordinate system has y growing downward)
-            y = chart_height - ((value - min_value) / range_value * chart_height)
-            x = i * point_spacing
-            points.append(ft.Offset(x, y))
-        
-        # Create bars for bar chart (for savings)
-        max_bar_height = chart_height
-        bar_spacing = 5
-        bar_width = (chart_width / len(values)) - bar_spacing
-        
-        bars = []
-        for i, value in enumerate(values):
-            # Normalize bar height
-            bar_height = (value / max_value) * max_bar_height if max_value > 0 else 0
+        # Determine whether to use bar chart or simplified line chart
+        if "month" in data[0]:  # Monthly data (for savings)
+            # Use a bar chart
+            bars = []
+            bar_spacing = 5
+            bar_width = (chart_width / len(values)) - bar_spacing
             
-            bars.append(
-                ft.Container(
-                    width=bar_width,
-                    height=bar_height,
-                    bgcolor=color,
-                    border_radius=ft.border_radius.only(top_left=5, top_right=5),
-                    # Position at the bottom
-                    margin=ft.margin.only(bottom=0, top=max_bar_height - bar_height)
-                )
-            )
-        
-        # Create the chart components
-        title = data[0].get("month", "")
-        last_title = data[-1].get("month", "")
-        
-        # Use different chart types based on data
-        if "month" in data[0]:
-            # Bar chart for monthly data
+            for i, value in enumerate(values):
+                # Calculate bar height as percentage of max value
+                bar_height = (value / max_value * height) if max_value > 0 else 0
+                # Get month label
+                month = data[i].get("month", "")
+                
+                # Create a bar container
+                bar = ft.Column([
+                    ft.Container(
+                        width=bar_width,
+                        height=bar_height,
+                        bgcolor=color,
+                        border_radius=5,
+                    ),
+                    ft.Text(month, size=10)
+                ], spacing=2, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+                
+                bars.append(bar)
+            
+            # Create the bar chart
             chart = ft.Row(
                 bars,
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                alignment=ft.MainAxisAlignment.CENTER,
                 width=chart_width
             )
-        else:
-            # Line chart for daily data
-            chart = ft.Stack([
-                # Create grid lines
-                ft.Column([
-                    ft.Container(
-                        height=1,
-                        width=chart_width,
-                        bgcolor=ft.colors.GREY_300
-                    ),
-                    ft.Container(
-                        height=chart_height/2 - 1,
-                        width=chart_width
-                    ),
-                    ft.Container(
-                        height=1,
-                        width=chart_width,
-                        bgcolor=ft.colors.GREY_300
-                    ),
-                    ft.Container(
-                        height=chart_height/2 - 1,
-                        width=chart_width
-                    ),
-                    ft.Container(
-                        height=1,
-                        width=chart_width,
-                        bgcolor=ft.colors.GREY_300
-                    ),
-                ]),
+        else:  # Daily data (for liquidity and net worth)
+            # Sample the data to avoid overcrowding
+            # For 90 days, take every 10th day
+            sample_size = max(1, len(data) // 9)
+            sampled_data = [data[i] for i in range(0, len(data), sample_size)]
+            
+            # If there are still too many points, further reduce the sample
+            if len(sampled_data) > 10:
+                sampled_data = sampled_data[:10]
+            
+            # Add the most recent data point if it's not already included
+            if data[-1] not in sampled_data:
+                sampled_data.append(data[-1])
+            
+            # Sort by date to ensure chronological order
+            sampled_data.sort(key=lambda x: x.get("date", ""))
+            
+            # Create a simplified line chart using a row of points with connecting text
+            sampled_values = [point[value_key] for point in sampled_data]
+            
+            # Create point markers and labels
+            points = []
+            for i, point in enumerate(sampled_data):
+                value = sampled_values[i]
+                day = point.get("day", "")
                 
-                # Create line
-                ft.ShaderMask(
-                    content=ft.Container(width=chart_width, height=chart_height),
-                    blend_mode=ft.BlendMode.SRC_IN,
-                    shader=ft.LinearGradient(
-                        begin=ft.Alignment(-0.5, 0),
-                        end=ft.Alignment(1, 0),
-                        colors=[color, color],
-                        stops=[0.0, 1.0],
-                    ),
-                    child=ft.ClipPath(
-                        clip_behavior=ft.ClipBehavior.HARD_EDGE,
-                        clip_path=ft.Path([
-                            # Move to the start point
-                            ft.PathMoveTo(points[0].x, points[0].y),
-                            # Draw lines to each point
-                            *[ft.PathLineTo(p.x, p.y) for p in points[1:]],
-                            # Complete the path by going to the bottom right, then bottom left, then back to start
-                            ft.PathLineTo(points[-1].x, chart_height),
-                            ft.PathLineTo(points[0].x, chart_height),
-                            ft.PathLineTo(points[0].x, points[0].y),
-                        ]),
-                        content=ft.Container(
-                            width=chart_width,
-                            height=chart_height,
-                            opacity=0.3
-                        )
-                    )
+                # Calculate point position as percentage of chart height
+                position = 1 - ((value - min_value) / (max_value - min_value)) if max_value > min_value else 0.5
+                
+                # Create a marker at the calculated position
+                marker = ft.Container(
+                    content=ft.Column([
+                        ft.Container(
+                            width=10,
+                            height=10,
+                            border_radius=10,
+                            bgcolor=color,
+                        ),
+                        ft.Text(day, size=10, width=60, text_align=ft.TextAlign.CENTER)
+                    ], spacing=2, alignment=ft.MainAxisAlignment.START),
+                    margin=ft.margin.only(top=position * (height - 50)),
+                    alignment=ft.alignment.top_center,
                 )
-            ])
+                
+                points.append(marker)
+            
+            # Create the chart with points
+            chart = ft.Container(
+                content=ft.Row(
+                    points,
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                height=height,
+                border=ft.border.all(1, ft.colors.GREY_300),
+                border_radius=5,
+                width=chart_width,
+                padding=10,
+            )
         
-        # Create the axis labels
-        labels = ft.Row([
-            ft.Text(title, size=12, color=ft.colors.GREY_700),
+        # Create summary text
+        summary_text = ft.Row([
+            ft.Text(f"Min: {min_value:.2f} CHF", size=12, color=ft.colors.GREY_700),
             ft.Container(expand=True),
-            ft.Text(last_title, size=12, color=ft.colors.GREY_700),
+            ft.Text(f"Max: {max_value:.2f} CHF", size=12, color=ft.colors.GREY_700),
         ], width=chart_width)
         
-        # Create the chart with labels
+        # Combine chart and summary
         return ft.Column([
             chart,
-            labels,
-            ft.Row([
-                ft.Text(f"Min: {min_value:.2f} CHF", size=12, color=ft.colors.GREY_700),
-                ft.Container(expand=True),
-                ft.Text(f"Max: {max_value:.2f} CHF", size=12, color=ft.colors.GREY_700),
-            ], width=chart_width)
+            summary_text
         ])
     
     def update_data(self):
@@ -470,21 +459,21 @@ class DashboardView:
         dashboard_data = self.data_provider.get_dashboard_data()
         
         # Update liquidity chart
-        liquidity_chart = self._create_sparkline_chart(
+        liquidity_chart = self._create_simple_chart(
             dashboard_data["liquidity_trend"], 
             color=ft.colors.BLUE
         )
         self.liquidity_chart_container.content.controls[2] = liquidity_chart
         
         # Update net worth chart
-        net_worth_chart = self._create_sparkline_chart(
+        net_worth_chart = self._create_simple_chart(
             dashboard_data["net_worth_trend"], 
             color=ft.colors.GREEN
         )
         self.net_worth_chart_container.content.controls[2] = net_worth_chart
         
         # Update savings chart
-        savings_chart = self._create_sparkline_chart(
+        savings_chart = self._create_simple_chart(
             dashboard_data["monthly_savings"], 
             color=ft.colors.PURPLE
         )
