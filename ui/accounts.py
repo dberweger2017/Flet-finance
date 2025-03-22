@@ -532,11 +532,19 @@ class AccountsView:
         self.transfer_amount_field.value = ""
         self.transfer_description_field.value = ""
         
+        # Make sure we have populated the account dropdowns
+        if not self.from_account_dropdown.options or not self.to_account_dropdown.options:
+            self.load_accounts()  # This will populate the dropdown options
+        
+        # Set default values for dropdowns if options exist
         if self.from_account_dropdown.options:
             self.from_account_dropdown.value = self.from_account_dropdown.options[0].key
         
-        if self.to_account_dropdown.options:
-            self.to_account_dropdown.value = self.to_account_dropdown.options[-1].key if len(self.to_account_dropdown.options) > 1 else None
+        if len(self.to_account_dropdown.options) > 1:
+            # Set to second account if available (to avoid same account transfer)
+            self.to_account_dropdown.value = self.to_account_dropdown.options[1].key
+        elif self.to_account_dropdown.options:
+            self.to_account_dropdown.value = self.to_account_dropdown.options[0].key
         
         # Show dialog
         self.page.dialog = self.transfer_dialog
