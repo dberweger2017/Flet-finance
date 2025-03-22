@@ -3,7 +3,7 @@
 import sqlite3
 import json
 import os
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 class Database:
     def __init__(self, db_path="finance_tracker.db"):
@@ -422,7 +422,7 @@ class Database:
         
         # Upcoming subscription payments (next 30 days)
         today = date.today()
-        thirty_days = today.replace(day=today.day + 30)
+        thirty_days = today + timedelta(days=30)  # FIXED: Use timedelta for date arithmetic
         cursor = self.conn.cursor()
         cursor.execute('''
         SELECT SUM(amount) FROM subscriptions 
