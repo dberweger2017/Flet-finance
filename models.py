@@ -29,16 +29,24 @@ class Account:
                 self.balance -= amount
                 return True
             return False
-        else:
+        elif self.account_type == "savings":
+            # Savings accounts still require sufficient balance
             if self.balance >= amount:
                 self.balance -= amount
                 return True
             return False
+        else:
+            # Debit accounts can go negative (overdraft)
+            self.balance -= amount
+            return True
             
     def get_available_balance(self):
         """Return the available balance considering credit limits"""
         if self.account_type == "credit":
             return self.balance + self.credit_limit
+        elif self.account_type == "debit" and self.balance < 0:
+            # For debit accounts with negative balance, available balance is 0
+            return 0
         return self.balance
         
     def reconcile_balance(self, reported_balance):

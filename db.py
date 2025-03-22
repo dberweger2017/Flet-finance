@@ -388,7 +388,10 @@ class Database:
         liquidity = 0
         
         for account in accounts:
-            if account.account_type == "debit" or account.account_type == "savings":
+            if account.account_type == "debit":
+                # Add only non-negative balance for debit accounts
+                liquidity += max(0, account.balance)
+            elif account.account_type == "savings":
                 liquidity += account.balance
             elif account.account_type == "credit":
                 liquidity += account.get_available_balance()
