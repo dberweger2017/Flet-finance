@@ -88,7 +88,7 @@ class PendingView:
         self.page.update()
     
     def _create_pending_card(self, transaction, accounts):
-        """Create a card UI for a pending transaction"""
+        """Create a card UI for a pending transaction with horizontal text layout"""
         # Determine icon and color based on transaction type
         icon_name = ft.Icons.PAYMENT
         icon_color = ft.colors.BLUE
@@ -135,7 +135,7 @@ class PendingView:
         # Format date
         date_str = transaction.date.strftime("%Y-%m-%d")
         
-        # Create account info text
+        # Create account info text - FIX THE LAYOUT HERE TO BE HORIZONTAL
         account_info = ""
         if transaction.transaction_type == "transfer":
             account_info = f"From: {from_account_name} → To: {to_account_name}"
@@ -169,7 +169,7 @@ class PendingView:
             on_click=lambda e, tid=transaction.id: self.edit_transaction(tid),
         )
         
-        # Create transaction card
+        # Create transaction card with fixed layout - WRAPPED IN PROPER CONTAINER TO ENSURE HORIZONTAL TEXT
         return ft.Card(
             content=ft.Container(
                 content=ft.Column([
@@ -181,16 +181,22 @@ class PendingView:
                             weight=ft.FontWeight.BOLD
                         ),
                         subtitle=ft.Text(f"{date_str} • {transaction.transaction_type.capitalize()}"),
-                        trailing=ft.Text(
-                            amount_text,
-                            size=16,
-                            weight=ft.FontWeight.BOLD,
-                            color=amount_color,
+                        trailing=ft.Container(
+                            content=ft.Text(
+                                amount_text,
+                                size=16,
+                                weight=ft.FontWeight.BOLD,
+                                color=amount_color,
+                            ),
+                            width=150,  # Fixed width to prevent vertical text
                         ),
                     ),
                     ft.Container(
                         content=ft.Column([
-                            ft.Text(account_info),
+                            ft.Container(
+                                content=ft.Text(account_info),
+                                width=350,  # Ensure sufficient width for the text
+                            ),
                             ft.Text(f"Category: {transaction.category or 'Not categorized'}"),
                         ]),
                         padding=ft.padding.symmetric(horizontal=15),
@@ -205,6 +211,7 @@ class PendingView:
                     ),
                 ]),
                 padding=10,
+                width=600,  # Ensure the container has sufficient width
             ),
         )
     
