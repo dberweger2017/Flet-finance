@@ -233,8 +233,7 @@ class DebtsView:
         delete_button = ft.TextButton(
             "Delete",
             icon=ft.Icons.DELETE,
-            data=debt.id,
-            on_click=lambda e: self.delete_debt(e.control.data),
+            on_click=lambda e, did=debt.id: self.delete_button_clicked(e, did),
         )
         
         history_button = ft.TextButton(
@@ -580,10 +579,21 @@ class DebtsView:
         self.page.dialog.open = True
         self.page.update()
     
+    def delete_button_clicked(self, e, debt_id):
+        """Debug helper function for delete button clicks"""
+        print(f"Delete button clicked for debt_id: {debt_id}")
+        print(f"Event data: {e}")
+        self.delete_debt(debt_id)
+    
     def delete_debt(self, debt_id):
         """Delete a debt after confirmation"""
+        print(f"delete_debt called with debt_id: {debt_id}")
+        # Use a local variable that will be captured by the closure
+        current_debt_id = debt_id
+        
         def confirm_delete(e):
-            self.db.delete_debt(debt_id)
+            print(f"Confirm delete called for debt_id: {current_debt_id}")
+            self.db.delete_debt(current_debt_id)
             self.page.snack_bar = ft.SnackBar(content=ft.Text("Debt deleted"))
             self.page.snack_bar.open = True
             self.load_debts()
