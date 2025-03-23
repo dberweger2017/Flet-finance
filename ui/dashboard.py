@@ -1,7 +1,7 @@
 # ui/dashboard.py - Finance Tracker App/ui/dashboard.py
 
 import flet as ft
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import calendar
 import json
 from dashboard_data import DashboardDataProvider
@@ -300,7 +300,7 @@ class DashboardView:
         )
     
     def _create_metric_card(self, title, value, subtitle=None):
-        """Create a metric card (same as original)"""
+        """Create a card displaying a financial metric"""
         return ft.Card(
             content=ft.Container(
                 content=ft.Column([
@@ -308,145 +308,225 @@ class DashboardView:
                     ft.Text(value, size=24, weight=ft.FontWeight.BOLD),
                     ft.Text(subtitle, size=12, color=ft.colors.GREY_600) if subtitle else ft.Container(),
                 ]),
-                width=220,
+                width=200,
                 padding=15,
             ),
         )
     
     def _go_to_pending(self, e):
-        """Navigate to pending transactions page (same as original)"""
+        """Navigate to pending transactions view"""
         self.page.go("/pending")
     
     def _refresh_clicked(self, e):
-        """Refresh the dashboard data (same as original)"""
+        """Refresh dashboard data"""
         self.update_data()
-        self.page.snack_bar = ft.SnackBar(
-            content=ft.Text("Dashboard refreshed"),
-            action="OK",
-        )
+        self.page.snack_bar = ft.SnackBar(content=ft.Text("Dashboard refreshed"))
         self.page.snack_bar.open = True
         self.page.update()
     
-    def _create_simple_chart(self, data, value_key="value", color=ft.colors.BLUE, height=200):
-        """Create a simple visual representation of data using basic Flet containers"""
+    def _create_liquidity_chart(self, data):
+        """Create a line chart for liquidity trend using Flet's built-in LineChart"""
         if not data:
             return ft.Container(
                 content=ft.Text("No data available", color=ft.colors.GREY_400),
                 alignment=ft.alignment.center,
-                height=height
+                height=200
+            )
+        
+        # Sort data by date to ensure chronological order
+        sorted_data = sorted(data, key=lambda x: x["date"])
+        
+        # Modify the data to have zeros for days before the last 3 days
+        today = date.today()
+        three_days_ago = today - timedelta(days=3)
+        
+        # Format as ISO string for comparison
+        three_days_ago_str = three_days_ago.isoformat()
+        
+        # Set all values before the last 3 days to zero
+        for point in sorted_data:
+            if point["date"] < three_days_ago_str:
+                point["value"] = 0
+        
+        # Extract values for plotting
+        values = [point["value"] for point in sorted_data]
+        min_value = min(values) if values else 0  # Avoid empty list error
+        max_value = max(values) if max(values) > 0 else 1  # Avoid division by zero
+        
+        # Create data points for the chart
+        data_points = [
+            ft.LineChartDataPoint(i, point["value"]) 
+            for i, point in enumerate(sorted_data)
+        ]
+        
+        # Create line chart for liquidity
+        return ft.LineChart(
+            data_series=[
+                ft.LineChartData(
+                    data_points=data_points,
+                    color=ft.colors.BLUE,
+                    curved=True,
+                    stroke_width=3,
+                    stroke_cap_round=True,
+                )
+            ],
+            border=ft.border.all(1, ft.colors.GREY_300),
+            left_axis=ft.ChartAxis(
+                # Add some Y-axis labels
+                labels=[
+                    ft.ChartAxisLabel(value=min_value, label=ft.Text(f"{min_value:.0f}")),
+                    ft.ChartAxisLabel(value=(min_value + max_value) / 2, label=ft.Text(f"{(min_value + max_value) / 2:.0f}")),
+                    ft.ChartAxisLabel(value=max_value, label=ft.Text(f"{max_value:.0f}")),
+                ],
+                labels_size=40,
+            ),
+            bottom_axis=ft.ChartAxis(
+                # Add some X-axis labels (dates)
+                labels=[
+                    ft.ChartAxisLabel(
+                        value=i, 
+                        label=ft.Container(ft.Text(sorted_data[i]["day"]), padding=5)
+                    )
+                    for i in range(0, len(sorted_data), max(1, len(sorted_data) // 5))  # Show ~5 labels evenly distributed
+                ],
+                labels_size=40,
+            ),
+            horizontal_grid_lines=ft.ChartGridLines(
+                color=ft.colors.GREY_300, 
+                width=1,
+                dash_pattern=[3, 3]
+            ),
+            min_y=min_value * 0.9,  # Add some padding
+            max_y=max_value * 1.1,
+            tooltip_bgcolor=ft.colors.with_opacity(0.8, ft.colors.BLUE_GREY),
+            interactive=True,
+            expand=True,
+            height=250,
+        )
+
+    def _create_net_worth_chart(self, data):
+        """Create a line chart for net worth trend using Flet's built-in LineChart"""
+        if not data:
+            return ft.Container(
+                content=ft.Text("No data available", color=ft.colors.GREY_400),
+                alignment=ft.alignment.center,
+                height=200
             )
         
         # Extract values for plotting
-        values = [point[value_key] for point in data]
+        values = [point["value"] for point in data]
         min_value = min(values)
         max_value = max(values)
         
-        # Create a simple data visualization using a row of containers with different heights
-        chart_width = 700
+        # Create data points for the chart
+        data_points = [
+            ft.LineChartDataPoint(i, point["value"]) 
+            for i, point in enumerate(data)
+        ]
         
-        # Determine whether to use bar chart or simplified line chart
-        if "month" in data[0]:  # Monthly data (for savings)
-            # Use a bar chart
-            bars = []
-            bar_spacing = 5
-            bar_width = (chart_width / len(values)) - bar_spacing
-            
-            for i, value in enumerate(values):
-                # Calculate bar height as percentage of max value
-                bar_height = (value / max_value * height) if max_value > 0 else 0
-                # Get month label
-                month = data[i].get("month", "")
-                
-                # Create a bar container
-                bar = ft.Column([
-                    ft.Container(
-                        width=bar_width,
-                        height=bar_height,
-                        bgcolor=color,
-                        border_radius=5,
-                    ),
-                    ft.Text(month, size=10)
-                ], spacing=2, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-                
-                bars.append(bar)
-            
-            # Create the bar chart
-            chart = ft.Row(
-                bars,
-                alignment=ft.MainAxisAlignment.CENTER,
-                width=chart_width
-            )
-        else:  # Daily data (for liquidity and net worth)
-            # Sample the data to avoid overcrowding
-            # For 90 days, take every 10th day
-            sample_size = max(1, len(data) // 9)
-            sampled_data = [data[i] for i in range(0, len(data), sample_size)]
-            
-            # If there are still too many points, further reduce the sample
-            if len(sampled_data) > 10:
-                sampled_data = sampled_data[:10]
-            
-            # Add the most recent data point if it's not already included
-            if data[-1] not in sampled_data:
-                sampled_data.append(data[-1])
-            
-            # Sort by date to ensure chronological order
-            sampled_data.sort(key=lambda x: x.get("date", ""))
-            
-            # Create a simplified line chart using a row of points with connecting text
-            sampled_values = [point[value_key] for point in sampled_data]
-            
-            # Create point markers and labels
-            points = []
-            for i, point in enumerate(sampled_data):
-                value = sampled_values[i]
-                day = point.get("day", "")
-                
-                # Calculate point position as percentage of chart height
-                position = 1 - ((value - min_value) / (max_value - min_value)) if max_value > min_value else 0.5
-                
-                # Create a marker at the calculated position
-                marker = ft.Container(
-                    content=ft.Column([
-                        ft.Container(
-                            width=10,
-                            height=10,
-                            border_radius=10,
-                            bgcolor=color,
-                        ),
-                        ft.Text(day, size=10, width=60, text_align=ft.TextAlign.CENTER)
-                    ], spacing=2, alignment=ft.MainAxisAlignment.START),
-                    margin=ft.margin.only(top=position * (height - 50)),
-                    alignment=ft.alignment.top_center,
+        # Create line chart for net worth
+        return ft.LineChart(
+            data_series=[
+                ft.LineChartData(
+                    data_points=data_points,
+                    color=ft.colors.GREEN,
+                    curved=True,
+                    stroke_width=3,
+                    stroke_cap_round=True,
                 )
-                
-                points.append(marker)
-            
-            # Create the chart with points
-            chart = ft.Container(
-                content=ft.Row(
-                    points,
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                ),
-                height=height,
-                border=ft.border.all(1, ft.colors.GREY_300),
-                border_radius=5,
-                width=chart_width,
-                padding=10,
+            ],
+            border=ft.border.all(1, ft.colors.GREY_300),
+            left_axis=ft.ChartAxis(
+                # Add some Y-axis labels
+                labels=[
+                    ft.ChartAxisLabel(value=min_value, label=ft.Text(f"{min_value:.0f}")),
+                    ft.ChartAxisLabel(value=(min_value + max_value) / 2, label=ft.Text(f"{(min_value + max_value) / 2:.0f}")),
+                    ft.ChartAxisLabel(value=max_value, label=ft.Text(f"{max_value:.0f}")),
+                ],
+                labels_size=40,
+            ),
+            bottom_axis=ft.ChartAxis(
+                # Add some X-axis labels (dates)
+                labels=[
+                    ft.ChartAxisLabel(
+                        value=i, 
+                        label=ft.Container(ft.Text(data[i]["day"]), padding=5)
+                    )
+                    for i in range(0, len(data), max(1, len(data) // 5))  # Show ~5 labels evenly distributed
+                ],
+                labels_size=40,
+            ),
+            horizontal_grid_lines=ft.ChartGridLines(
+                color=ft.colors.GREY_300, 
+                width=1,
+                dash_pattern=[3, 3]
+            ),
+            min_y=min_value * 0.9,  # Add some padding
+            max_y=max_value * 1.1,
+            tooltip_bgcolor=ft.colors.with_opacity(0.8, ft.colors.BLUE_GREY),
+            interactive=True,
+            expand=True,
+            height=250,
+        )
+
+    def _create_savings_chart(self, data):
+        """Create a bar chart for monthly savings using Flet's built-in BarChart"""
+        if not data:
+            return ft.Container(
+                content=ft.Text("No data available", color=ft.colors.GREY_400),
+                alignment=ft.alignment.center,
+                height=200
             )
         
-        # Create summary text
-        summary_text = ft.Row([
-            ft.Text(f"Min: {min_value:.2f} CHF", size=12, color=ft.colors.GREY_700),
-            ft.Container(expand=True),
-            ft.Text(f"Max: {max_value:.2f} CHF", size=12, color=ft.colors.GREY_700),
-        ], width=chart_width)
+        # Extract values for plotting and find the max for scaling
+        values = [point["value"] for point in data]
+        max_value = max(values) if values else 0
         
-        # Combine chart and summary
-        return ft.Column([
-            chart,
-            summary_text
-        ])
+        # Create the bar chart for monthly savings
+        return ft.BarChart(
+            bar_groups=[
+                ft.BarChartGroup(
+                    x=i,
+                    bar_rods=[
+                        ft.BarChartRod(
+                            from_y=0,
+                            to_y=point["value"],
+                            width=30,
+                            color=ft.colors.PURPLE,
+                            tooltip=f"{point['value']:.2f} CHF",
+                            border_radius=3,
+                        ),
+                    ],
+                )
+                for i, point in enumerate(data)
+            ],
+            border=ft.border.all(1, ft.colors.GREY_300),
+            left_axis=ft.ChartAxis(
+                title=ft.Text("Amount (CHF)"),
+                title_size=30,
+                labels_size=40,
+            ),
+            bottom_axis=ft.ChartAxis(
+                labels=[
+                    ft.ChartAxisLabel(
+                        value=i, 
+                        label=ft.Container(ft.Text(point["month"]), padding=10)
+                    )
+                    for i, point in enumerate(data)
+                ],
+                labels_size=40,
+            ),
+            horizontal_grid_lines=ft.ChartGridLines(
+                color=ft.colors.GREY_300, 
+                width=1, 
+                dash_pattern=[3, 3]
+            ),
+            tooltip_bgcolor=ft.colors.with_opacity(0.5, ft.colors.GREY_300),
+            max_y=max_value * 1.1 if max_value > 0 else 100,  # Add 10% padding
+            interactive=True,
+            expand=True,
+            height=250,
+        )
     
     def update_data(self):
         """Update dashboard with latest data from database"""
@@ -459,24 +539,15 @@ class DashboardView:
         dashboard_data = self.data_provider.get_dashboard_data()
         
         # Update liquidity chart
-        liquidity_chart = self._create_simple_chart(
-            dashboard_data["liquidity_trend"], 
-            color=ft.colors.BLUE
-        )
+        liquidity_chart = self._create_liquidity_chart(dashboard_data["liquidity_trend"])
         self.liquidity_chart_container.content.controls[2] = liquidity_chart
         
         # Update net worth chart
-        net_worth_chart = self._create_simple_chart(
-            dashboard_data["net_worth_trend"], 
-            color=ft.colors.GREEN
-        )
+        net_worth_chart = self._create_net_worth_chart(dashboard_data["net_worth_trend"])
         self.net_worth_chart_container.content.controls[2] = net_worth_chart
         
         # Update savings chart
-        savings_chart = self._create_simple_chart(
-            dashboard_data["monthly_savings"], 
-            color=ft.colors.PURPLE
-        )
+        savings_chart = self._create_savings_chart(dashboard_data["monthly_savings"])
         self.savings_chart_container.content.controls[2] = savings_chart
         
         # Original code for updating accounts summary

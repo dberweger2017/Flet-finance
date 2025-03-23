@@ -524,57 +524,66 @@ class DebtsView:
             ], tight=True, spacing=10),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda e: self.page.close(dlg)),
-                ft.TextButton("Save", on_click=lambda e: self.save_edit(e, dlg)),
+                ft.TextButton("Save", on_click=lambda e: self._save_debt_edit(
+                    e,
+                    dlg,
+                    debt,
+                    description_field.value,
+                    amount_field.value,
+                    due_date_picker.value,
+                    currency_dropdown.value,
+                    linked_account_dropdown.value
+                )),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
         
-        def save_edit(e, dialog):
-            try:
-                # Validate and parse inputs
-                amount = float(amount_field.value)
-                if amount <= 0:
-                    raise ValueError("Amount must be positive")
-                
-                if not description_field.value:
-                    raise ValueError("Description is required")
-                
-                # Parse due date
-                try:
-                    due_date = datetime.strptime(due_date_picker.value, "%Y-%m-%d").date()
-                except ValueError:
-                    due_date = debt.due_date
-                
-                # Set linked account
-                linked_account_id = None
-                if linked_account_dropdown.value != "none":
-                    linked_account_id = linked_account_dropdown.value
-                
-                # Update debt
-                debt.description = description_field.value
-                debt.amount = amount
-                debt.due_date = due_date
-                debt.linked_account_id = linked_account_id
-                debt.currency = currency_dropdown.value
-                
-                # Save debt
-                self.db.save_debt(debt)
-                
-                # Show success message
-                self.page.snack_bar = ft.SnackBar(content=ft.Text("Debt updated successfully"))
-                self.page.snack_bar.open = True
-                
-                # Close dialog and reload
-                self.page.close(dialog)
-                self.load_debts()
-            except ValueError as e:
-                # Show error
-                self.page.snack_bar = ft.SnackBar(content=ft.Text(str(e) or "Invalid input"))
-                self.page.snack_bar.open = True
-                self.page.update()
-        
         # Open the dialog
         self.page.open(dlg)
+
+    def _save_debt_edit(self, e, dialog, debt, description, amount_str, due_date_str, currency, linked_account_value):
+        try:
+            # Validate and parse inputs
+            amount = float(amount_str)
+            if amount <= 0:
+                raise ValueError("Amount must be positive")
+            
+            if not description:
+                raise ValueError("Description is required")
+            
+            # Parse due date
+            try:
+                due_date = datetime.strptime(due_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                due_date = debt.due_date
+            
+            # Set linked account
+            linked_account_id = None
+            if linked_account_value != "none":
+                linked_account_id = linked_account_value
+            
+            # Update debt
+            debt.description = description
+            debt.amount = amount
+            debt.due_date = due_date
+            debt.linked_account_id = linked_account_id
+            debt.currency = currency
+            
+            # Save debt
+            self.db.save_debt(debt)
+            
+            # Show success message
+            self.page.snack_bar = ft.SnackBar(content=ft.Text("Debt updated successfully"))
+            self.page.snack_bar.open = True
+            
+            # Close dialog and reload
+            self.page.close(dialog)
+            self.load_debts()
+        except ValueError as e:
+            # Show error
+            self.page.snack_bar = ft.SnackBar(content=ft.Text(str(e) or "Invalid input"))
+            self.page.snack_bar.open = True
+            self.page.update()
     
     def delete_debt(self, debt_id):
         """Delete a debt after confirmation"""

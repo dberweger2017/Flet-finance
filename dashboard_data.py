@@ -30,13 +30,6 @@ class DashboardDataProvider:
             "value": current_liquidity
         })
         
-        # Reconstruct daily liquidity for the past 90 days by working backwards
-        # Start with current liquidity and subtract transactions as we go back in time
-        historical_liquidity = current_liquidity
-        
-        # Create a dictionary to store daily transaction impact
-        daily_transactions = defaultdict(float)
-        
         # Get all transactions for the last N days
         start_date = today - timedelta(days=days)
         transactions = self.db.get_all_transactions(
@@ -44,6 +37,26 @@ class DashboardDataProvider:
             start_date=start_date,
             end_date=today
         )
+        
+        # If we don't have many transactions, add a starting point with zero value
+        # This ensures we have at least two points for a proper trend line
+        if len(transactions) < 5:
+            past_date = today - timedelta(days=days-1)
+            liquidity_data.append({
+                "date": past_date.isoformat(),
+                "day": past_date.strftime("%d %b"),
+                "value": 0  # Start from zero
+            })
+            # Sort by date (ascending)
+            liquidity_data.sort(key=lambda x: x["date"])
+            return liquidity_data
+        
+        # Reconstruct daily liquidity for the past 90 days by working backwards
+        # Start with current liquidity and subtract transactions as we go back in time
+        historical_liquidity = current_liquidity
+        
+        # Create a dictionary to store daily transaction impact
+        daily_transactions = defaultdict(float)
         
         # Calculate transaction impact per day
         for tx in transactions:
@@ -93,13 +106,6 @@ class DashboardDataProvider:
             "value": current_net_worth
         })
         
-        # Reconstruct daily net worth for the past 90 days
-        historical_net_worth = current_net_worth
-        
-        # Create a dictionary to store daily transaction impact
-        daily_transactions = defaultdict(float)
-        daily_debt_changes = defaultdict(float)
-        
         # Get all transactions for the last N days
         start_date = today - timedelta(days=days)
         transactions = self.db.get_all_transactions(
@@ -107,6 +113,26 @@ class DashboardDataProvider:
             start_date=start_date,
             end_date=today
         )
+        
+        # If we don't have many transactions, add a starting point with zero value
+        # This ensures we have at least two points for a proper trend line
+        if len(transactions) < 5:
+            past_date = today - timedelta(days=days-1)
+            net_worth_data.append({
+                "date": past_date.isoformat(),
+                "day": past_date.strftime("%d %b"),
+                "value": 0  # Start from zero
+            })
+            # Sort by date (ascending)
+            net_worth_data.sort(key=lambda x: x["date"])
+            return net_worth_data
+        
+        # Reconstruct daily net worth for the past 90 days
+        historical_net_worth = current_net_worth
+        
+        # Create a dictionary to store daily transaction impact
+        daily_transactions = defaultdict(float)
+        daily_debt_changes = defaultdict(float)
         
         # Calculate transaction impact per day on net worth
         for tx in transactions:
