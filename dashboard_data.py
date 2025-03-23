@@ -79,14 +79,10 @@ class DashboardDataProvider:
             if past_date_str in daily_transactions:
                 historical_liquidity -= daily_transactions[past_date_str]
             
-            # Add small random variation to make the chart look more realistic
-            # In a real app, this would be unnecessary as real transaction data would provide natural variation
-            random_variation = (i % 5 - 2) * 10  # Small random-like variation
-            
             liquidity_data.append({
                 "date": past_date_str,
                 "day": past_date.strftime("%d %b"),
-                "value": max(0, historical_liquidity + random_variation)
+                "value": max(0, historical_liquidity)
             })
         
         # Sort by date (ascending)
