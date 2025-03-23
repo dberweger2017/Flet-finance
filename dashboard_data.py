@@ -143,8 +143,7 @@ class DashboardDataProvider:
                 daily_transactions[tx_date] -= tx.amount
             # Transfers don't affect net worth, they just move money between accounts
         
-        # Get debt information (simplified - in a real app, we'd need to track debt history)
-        # For now, we'll add some estimated historical debt changes
+        # Get debt information
         debts = self.db.get_all_debts()
         for debt in debts:
             # Distribute debt payments across past days to simulate history
@@ -168,15 +167,21 @@ class DashboardDataProvider:
             if past_date_str in daily_debt_changes:
                 historical_net_worth -= daily_debt_changes[past_date_str]
             
-            # Add small trend variation to make the chart look more realistic
-            # In a real app, this would be unnecessary as real data would provide natural variation
-            trend_variation = (i % 7 - 3) * 15  # Small variation that follows a weekly pattern
-            
-            net_worth_data.append({
-                "date": past_date_str,
-                "day": past_date.strftime("%d %b"),
-                "value": historical_net_worth + trend_variation
-            })
+            # Check if we're within the last few days (real data)
+            # In a real app, you'd determine this based on actual transaction history
+            if i <= 3:  # Only showing real data for the last 3 days
+                net_worth_data.append({
+                    "date": past_date_str,
+                    "day": past_date.strftime("%d %b"),
+                    "value": historical_net_worth
+                })
+            else:
+                # For historical data, set to 0 instead of using the artificial variation
+                net_worth_data.append({
+                    "date": past_date_str,
+                    "day": past_date.strftime("%d %b"),
+                    "value": 0
+                })
         
         # Sort by date (ascending)
         net_worth_data.sort(key=lambda x: x["date"])
