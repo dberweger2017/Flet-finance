@@ -2,45 +2,143 @@
 
 import sqlite3
 import uuid
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 import json
 from decimal import Decimal
+import requests
 
 
 class CurrencyConverter:
-    """Utility class for currency conversion using fixed exchange rates"""
-    
-    # Exchange rates (base currency: CHF)
-    RATES = {
-        "CHF": 1.0,        # 1 CHF = 1 CHF
-        "EUR": 1.04,       # 1 CHF = 1.04 EUR
-        "USD": 1.13        # 1 CHF = 1.13 USD
-    }
+    """Utility class for currency conversion with dynamic exchange rates"""
     
     @staticmethod
-    def convert_to_chf(amount, from_currency):
+    def update_exchange_rates(db):
+        """Fetch and save latest exchange rates to database"""
+        try:
+            # Fetch current rates from API
+            response = requests.get('https://open.exchangerate-api.com/v6/latest/CHF')
+            data = response.json()
+            
+            if 'rates' in data:
+                # Prepare rates data for storage
+                rates_data = {
+                    'timestamp': datetime.now().isoformat(),
+                    'rates': {
+                        'EUR': data['rates'].get('EUR', 1.04),
+                        'USD': data['rates'].get('USD', 1.13)
+                    }
+                }
+                
+                # Create/update exchange rates record in the database
+                try:
+                    # First, try to find an existing record
+                    cursor = db.conn.cursor()
+                    cursor.execute('''
+                        INSERT OR REPLACE INTO exchange_rates (id, data) 
+                        VALUES (1, ?)
+                    ''', (json.dumps(rates_data),))
+                    db.conn.commit()
+                    print("[DEBUG] Exchange rates updated successfully")
+                except Exception as e:
+                    print(f"[ERROR] Failed to save exchange rates: {e}")
+                
+                return rates_data['rates']
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch exchange rates: {e}")
+        
+        return None
+
+    @staticmethod
+    def get_current_rates(db):
+        """Retrieve current exchange rates from database"""
+        try:
+            cursor = db.conn.cursor()
+            cursor.execute('SELECT data FROM exchange_rates WHERE id = 1')
+            row = cursor.fetchone()
+            
+            if row:
+                # Parse stored rates
+                rates_data = json.loads(row[0])
+                stored_timestamp = datetime.fromisoformat(rates_data['timestamp'])
+                
+                # Check if rates are recent (less than 24 hours old)
+                if datetime.now() - stored_timestamp < timedelta(days=1):
+                    return rates_data['rates']
+        except Exception as e:
+            print(f"[ERROR] Failed to retrieve exchange rates: {e}")
+        
+        # Default rates if no recent data found
+        return {
+            'EUR': 1.04,  # Default rate
+            'USD': 1.13   # Default rate
+        }
+
+    @classmethod
+    def convert_to_chf(cls, amount, from_currency, db=None):
         """Convert any currency to CHF (base currency)"""
         if from_currency == "CHF":
             return amount
         
-        # For other currencies, convert back to CHF
-        if from_currency in CurrencyConverter.RATES:
-            return amount / CurrencyConverter.RATES[from_currency]
+        # If db is provided, try to get current rates
+        if db:
+            try:
+                rates = cls.get_current_rates(db)
+                
+                # If rates not found, attempt to update
+                if not rates:
+                    cls.update_exchange_rates(db)
+                    rates = cls.get_current_rates(db)
+                
+                # Convert using retrieved or default rates
+                if from_currency in rates:
+                    return amount / rates[from_currency]
+            except Exception as e:
+                print(f"[ERROR] Currency conversion failed: {e}")
+        
+        # Fallback to default conversion if no db or rates not found
+        default_rates = {
+            "EUR": 1.04,
+            "USD": 1.13
+        }
+        
+        if from_currency in default_rates:
+            return amount / default_rates[from_currency]
         
         # Default to no conversion if currency not supported
         return amount
     
-    @staticmethod
-    def convert_from_chf(amount, to_currency):
+    @classmethod
+    def convert_from_chf(cls, amount, to_currency, db=None):
         """Convert CHF to other currencies"""
         if to_currency == "CHF":
             return amount
-            
-        # Convert CHF to target currency
-        if to_currency in CurrencyConverter.RATES:
-            return amount * CurrencyConverter.RATES[to_currency]
-            
+        
+        # If db is provided, try to get current rates
+        if db:
+            try:
+                rates = cls.get_current_rates(db)
+                
+                # If rates not found, attempt to update
+                if not rates:
+                    cls.update_exchange_rates(db)
+                    rates = cls.get_current_rates(db)
+                
+                # Convert using retrieved or default rates
+                if to_currency in rates:
+                    return amount * rates[to_currency]
+            except Exception as e:
+                print(f"[ERROR] Currency conversion failed: {e}")
+        
+        # Fallback to default conversion if no db or rates not found
+        default_rates = {
+            "EUR": 1.04,
+            "USD": 1.13
+        }
+        
+        if to_currency in default_rates:
+            return amount * default_rates[to_currency]
+        
         # Default to no conversion if currency not supported
         return amount
 

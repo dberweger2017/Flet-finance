@@ -4,6 +4,7 @@ import flet as ft
 import os
 from datetime import datetime
 from db import Database
+from models import CurrencyConverter
 
 # Import UI views
 from ui.dashboard import DashboardView
@@ -17,6 +18,13 @@ from ui.transfers import TransfersView
 class FinanceTrackerApp:
     def __init__(self):
         self.db = Database()
+        # Initialize currency exchange rates
+        try:
+            print("[INFO] Initializing currency exchange rates...")
+            CurrencyConverter.update_exchange_rates(self.db)
+        except Exception as e:
+            print(f"[WARNING] Failed to initialize exchange rates: {e}")
+        
         self.current_view = None
         self.nav_rail = None
         self.page = None

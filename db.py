@@ -33,6 +33,15 @@ class Database:
         with self.lock:
             cursor = self.conn.cursor()
             
+            # Create exchange_rates table
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS exchange_rates (
+                id INTEGER PRIMARY KEY,
+                data TEXT NOT NULL
+            )
+            ''')
+            print("[DEBUG] Created exchange_rates table")
+            
             # Create accounts table
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS accounts (
@@ -478,91 +487,114 @@ class Database:
             }
     
     def get_liquidity(self):
-        """Calculate current liquidity (sum of debit accounts and available credit)"""
-        print("[DEBUG] Calculating liquidity")
+        """Get total liquidity in CHF (available funds across all accounts)"""
         accounts = self.get_all_accounts()
+        if not accounts:
+            return 0
+        
+        # Calculate total liquidity (available funds from debit and checking accounts)
+        # only CHF equivalent values
         liquidity = 0
-        
         for account in accounts:
-            account_value_in_chf = 0
-            if account.account_type == "debit":
-                # Add only non-negative balance for debit accounts
-                account_value = max(0, account.balance)
-                # Convert to CHF if needed
-                account_value_in_chf = CurrencyConverter.convert_to_chf(account_value, account.currency)
-            elif account.account_type == "savings":
-                # Convert to CHF if needed
-                account_value_in_chf = CurrencyConverter.convert_to_chf(account.balance, account.currency)
-            elif account.account_type == "credit":
-                # Convert to CHF if needed
-                account_value_in_chf = CurrencyConverter.convert_to_chf(account.get_available_balance(), account.currency)
+            # Exclude credit accounts with negative balance
+            if account.account_type == "credit" and account.balance < 0:
+                continue
+                
+            # Exclude savings accounts (they're not considered liquid)
+            if account.is_savings:
+                continue
             
-            liquidity += account_value_in_chf
+            # Convert to CHF if needed and add to total
+            if account.currency == "CHF":
+                account_value_in_chf = account.get_available_balance()
+            else:
+                account_value_in_chf = CurrencyConverter.convert_to_chf(account.get_available_balance(), account.currency, self)
+            
+            liquidity += account_value_in_chf if account_value_in_chf > 0 else 0
         
-        print(f"[DEBUG] Total liquidity: {liquidity} CHF")
         return liquidity
     
     def get_net_worth(self):
-        """Calculate net worth considering accounts, debts, and subscriptions"""
-        print("[DEBUG] Calculating net worth")
-        with self.lock:
-            # Assets: All account balances + receivables
-            assets = 0
-            accounts = self.get_all_accounts()
-            for account in accounts:
-                # Convert all account balances to CHF
-                account_value_in_chf = CurrencyConverter.convert_to_chf(account.balance, account.currency)
+        """Calculate net worth in CHF (assets - liabilities) with detailed breakdown"""
+        # Get all accounts
+        accounts = self.get_all_accounts()
+        
+        # Get all debts
+        debts = self.get_all_debts()
+        
+        # Calculate assets (positive account balances + receivables)
+        assets = 0
+        for account in accounts:
+            # Add positive balances as assets
+            if account.balance > 0:
+                # Convert to CHF if needed
+                if account.currency == "CHF":
+                    account_value_in_chf = account.balance
+                else:
+                    account_value_in_chf = CurrencyConverter.convert_to_chf(account.balance, account.currency, self)
+                    
                 assets += account_value_in_chf
-            
-            receivables = self.get_all_debts(status="pending", is_receivable=True)
-            for debt in receivables:
-                # Convert receivable amounts to CHF
-                debt_value_in_chf = CurrencyConverter.convert_to_chf(debt.amount, debt.currency)
+        
+        # Add receivables (money owed to you)
+        for debt in debts:
+            if debt.is_receivable and debt.status != "paid":
+                # Convert to CHF if needed
+                if debt.currency == "CHF":
+                    debt_value_in_chf = debt.get_remaining_amount()
+                else:
+                    debt_value_in_chf = CurrencyConverter.convert_to_chf(debt.get_remaining_amount(), debt.currency, self)
+                    
                 assets += debt_value_in_chf
-            
-            print(f"[DEBUG] Total assets: {assets} CHF")
-            
-            # Liabilities: Credit account negative balances + debts
-            liabilities = 0
-            for account in accounts:
-                if account.account_type == "credit" and account.balance < 0:
-                    # Convert negative credit balances to CHF
-                    credit_value_in_chf = CurrencyConverter.convert_to_chf(abs(account.balance), account.currency)
-                    liabilities += credit_value_in_chf
-            
-            payable_debts = self.get_all_debts(status="pending", is_receivable=False)
-            for debt in payable_debts:
-                # Convert debt amounts to CHF
-                debt_value_in_chf = CurrencyConverter.convert_to_chf(debt.amount, debt.currency)
+        
+        # Calculate liabilities (negative balances + debts)
+        liabilities = 0
+        for account in accounts:
+            # Add negative balances as liabilities
+            if account.balance < 0:
+                # Convert to CHF if needed
+                if account.currency == "CHF":
+                    credit_value_in_chf = abs(account.balance)
+                else:
+                    credit_value_in_chf = CurrencyConverter.convert_to_chf(abs(account.balance), account.currency, self)
+                    
+                liabilities += credit_value_in_chf
+        
+        # Add debts (money you owe)
+        for debt in debts:
+            if not debt.is_receivable and debt.status != "paid":
+                # Convert to CHF if needed
+                if debt.currency == "CHF":
+                    debt_value_in_chf = debt.get_remaining_amount()
+                else:
+                    debt_value_in_chf = CurrencyConverter.convert_to_chf(debt.get_remaining_amount(), debt.currency, self)
+                    
                 liabilities += debt_value_in_chf
-            
-            print(f"[DEBUG] Total liabilities before subscriptions: {liabilities} CHF")
-            
-            # Upcoming subscription payments (next 30 days)
-            today = date.today()
-            thirty_days = today + timedelta(days=30)
-            cursor = self.conn.cursor()
-            cursor.execute('''
-            SELECT amount, currency FROM subscriptions 
-            WHERE status = 'active' AND next_payment_date <= ?
-            ''', (thirty_days.isoformat(),))
-            
-            upcoming_subscriptions = cursor.fetchall()
-            for sub in upcoming_subscriptions:
-                amount, currency = sub
-                if amount:
-                    # Convert subscription amounts to CHF
-                    sub_value_in_chf = CurrencyConverter.convert_to_chf(amount, currency)
-                    liabilities += sub_value_in_chf
-            
-            print(f"[DEBUG] Total liabilities including subscriptions: {liabilities} CHF")
-            print(f"[DEBUG] Net worth: {assets - liabilities} CHF")
-            
-            return {
-                "assets": assets,
-                "liabilities": liabilities,
-                "net_worth": assets - liabilities
-            }
+        
+        # Also include upcoming subscription payments in liabilities (next 30 days)
+        today = date.today()
+        thirty_days = today + timedelta(days=30)
+        
+        # Get active subscriptions with payments due in the next 30 days
+        subscriptions = self.get_all_subscriptions(status="active")
+        upcoming_subs = [sub for sub in subscriptions if sub.next_payment_date <= thirty_days]
+        
+        # Add upcoming subscription payments to liabilities
+        for sub in upcoming_subs:
+            if sub.currency == "CHF":
+                sub_value_in_chf = sub.amount
+            else:
+                sub_value_in_chf = CurrencyConverter.convert_to_chf(sub.amount, sub.currency, self)
+                
+            liabilities += sub_value_in_chf
+        
+        # Calculate net worth
+        net_worth = assets - liabilities
+        
+        return {
+            "assets": assets,
+            "liabilities": liabilities,
+            "net_worth": net_worth
+        }
     
     def check_and_update_overdue_debts(self):
         """Update status of overdue debts"""

@@ -44,8 +44,26 @@ class DashboardView:
         self.currency_info = ft.Container(
             content=ft.Column([
                 ft.Text("Currency Exchange Rates (Base: CHF)", size=14, weight=ft.FontWeight.BOLD),
-                ft.Text("1 CHF = 1.13 USD", size=12),
-                ft.Text("1 CHF = 1.04 EUR", size=12),
+                ft.Row([
+                    ft.Icon(ft.Icons.SYNC, color=ft.colors.BLUE, size=16),
+                    ft.Text("Last updated:", size=12),
+                    ft.Text("Loading...", size=12, color=ft.colors.GREY_600, id="last_updated"),
+                ]),
+                ft.Row([
+                    ft.Text("1 CHF = ", size=12),
+                    ft.Text("--", size=12, id="usd_rate"),
+                    ft.Text(" USD", size=12),
+                ]),
+                ft.Row([
+                    ft.Text("1 CHF = ", size=12),
+                    ft.Text("--", size=12, id="eur_rate"),
+                    ft.Text(" EUR", size=12),
+                ]),
+                ft.TextButton(
+                    "Update Rates",
+                    icon=ft.Icons.REFRESH,
+                    on_click=self._update_exchange_rates,
+                ),
             ]),
             padding=10,
             border=ft.border.all(1, ft.colors.GREY_300),
@@ -384,8 +402,67 @@ class DashboardView:
             height=250,
         )
     
+    def _update_exchange_rates(self, e):
+        """Update currency exchange rates from the API"""
+        try:
+            # Attempt to update rates
+            rates = CurrencyConverter.update_exchange_rates(self.db)
+            if rates:
+                # Update UI with new rates
+                for control in self.currency_info.content.controls:
+                    if isinstance(control, ft.Row):
+                        for c in control.controls:
+                            if getattr(c, 'id', None) == 'usd_rate':
+                                c.value = f"{rates.get('USD', '--'):.2f}"
+                            elif getattr(c, 'id', None) == 'eur_rate':
+                                c.value = f"{rates.get('EUR', '--'):.2f}"
+                            elif getattr(c, 'id', None) == 'last_updated':
+                                c.value = datetime.now().strftime("%Y-%m-%d %H:%M")
+                
+                self.page.snack_bar = ft.SnackBar(content=ft.Text("Exchange rates updated successfully"))
+                self.page.snack_bar.open = True
+            else:
+                self.page.snack_bar = ft.SnackBar(content=ft.Text("Failed to update exchange rates, using cached rates"))
+                self.page.snack_bar.open = True
+        except Exception as e:
+            print(f"[ERROR] Failed to update exchange rates: {e}")
+            self.page.snack_bar = ft.SnackBar(content=ft.Text(f"Error updating rates: {str(e)}"))
+            self.page.snack_bar.open = True
+        
+        # Refresh dashboard data to use updated rates
+        self.update_data()
+
     def update_data(self):
         """Update dashboard with latest data from database"""
+        # Update currency exchange rates display
+        try:
+            rates = CurrencyConverter.get_current_rates(self.db)
+            timestamp = None
+            
+            # Try to get the timestamp when rates were last updated
+            try:
+                cursor = self.db.conn.cursor()
+                cursor.execute('SELECT data FROM exchange_rates WHERE id = 1')
+                row = cursor.fetchone()
+                if row:
+                    data = json.loads(row[0])
+                    timestamp = datetime.fromisoformat(data['timestamp'])
+            except Exception as e:
+                print(f"[ERROR] Failed to get exchange rate timestamp: {e}")
+            
+            # Update the UI
+            for control in self.currency_info.content.controls:
+                if isinstance(control, ft.Row):
+                    for c in control.controls:
+                        if getattr(c, 'id', None) == 'usd_rate':
+                            c.value = f"{rates.get('USD', '--'):.2f}"
+                        elif getattr(c, 'id', None) == 'eur_rate':
+                            c.value = f"{rates.get('EUR', '--'):.2f}"
+                        elif getattr(c, 'id', None) == 'last_updated' and timestamp:
+                            c.value = timestamp.strftime("%Y-%m-%d %H:%M")
+        except Exception as e:
+            print(f"[ERROR] Failed to update exchange rate display: {e}")
+        
         # Show or hide pending transactions alert
         pending_transactions = self.db.get_all_transactions(status="pending")
         if pending_transactions:
@@ -445,8 +522,8 @@ class DashboardView:
                 balance_color = ft.colors.RED
             
             # Include the native currency and the CHF equivalent in parentheses
-            balance_in_chf = CurrencyConverter.convert_to_chf(account.balance, account.currency)
-            available_in_chf = CurrencyConverter.convert_to_chf(account.get_available_balance(), account.currency)
+            balance_in_chf = CurrencyConverter.convert_to_chf(account.balance, account.currency, self.db)
+            available_in_chf = CurrencyConverter.convert_to_chf(account.get_available_balance(), account.currency, self.db)
             
             balance_text = f"{account.balance:.2f} {account.currency}"
             if account.currency != "CHF":
@@ -489,7 +566,7 @@ class DashboardView:
             # Include the CHF equivalent for non-CHF currencies
             amount_text = f"-{sub.amount:.2f} {sub.currency}"
             if sub.currency != "CHF":
-                amount_in_chf = CurrencyConverter.convert_to_chf(sub.amount, sub.currency)
+                amount_in_chf = CurrencyConverter.convert_to_chf(sub.amount, sub.currency, self.db)
                 amount_text += f" ({amount_in_chf:.2f} CHF)"
             
             upcoming_rows.append(
@@ -505,7 +582,7 @@ class DashboardView:
         
         for debt in upcoming_debts:
             # Include the CHF equivalent for non-CHF currencies
-            amount_in_chf = CurrencyConverter.convert_to_chf(debt.amount, debt.currency)
+            amount_in_chf = CurrencyConverter.convert_to_chf(debt.amount, debt.currency, self.db)
             
             if not debt.is_receivable:
                 amount_text = f"-{debt.amount:.2f} {debt.currency}"
