@@ -23,8 +23,8 @@ class Database:
         self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         
-        if create_new:
-            self._create_tables()
+        # Always create tables if they don't exist, regardless of whether the DB file is new
+        self._create_tables()
         print("[DEBUG] Database initialization complete")
     
     def _create_tables(self):
