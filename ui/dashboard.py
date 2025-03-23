@@ -18,6 +18,11 @@ class DashboardView:
         
     def build(self):
         """Build the dashboard UI"""
+        # Create references for the rate displays
+        self.last_updated_text = ft.Text("Loading...", size=12, color=ft.colors.GREY_600)
+        self.usd_rate_text = ft.Text("--", size=12)
+        self.eur_rate_text = ft.Text("--", size=12)
+        
         # Pending transactions alert
         self.pending_alert = ft.Container(
             content=ft.Row([
@@ -47,16 +52,16 @@ class DashboardView:
                 ft.Row([
                     ft.Icon(ft.Icons.SYNC, color=ft.colors.BLUE, size=16),
                     ft.Text("Last updated:", size=12),
-                    ft.Text("Loading...", size=12, color=ft.colors.GREY_600, id="last_updated"),
+                    self.last_updated_text,
                 ]),
                 ft.Row([
                     ft.Text("1 CHF = ", size=12),
-                    ft.Text("--", size=12, id="usd_rate"),
+                    self.usd_rate_text,
                     ft.Text(" USD", size=12),
                 ]),
                 ft.Row([
                     ft.Text("1 CHF = ", size=12),
-                    ft.Text("--", size=12, id="eur_rate"),
+                    self.eur_rate_text,
                     ft.Text(" EUR", size=12),
                 ]),
                 ft.TextButton(
@@ -409,15 +414,9 @@ class DashboardView:
             rates = CurrencyConverter.update_exchange_rates(self.db)
             if rates:
                 # Update UI with new rates
-                for control in self.currency_info.content.controls:
-                    if isinstance(control, ft.Row):
-                        for c in control.controls:
-                            if getattr(c, 'id', None) == 'usd_rate':
-                                c.value = f"{rates.get('USD', '--'):.2f}"
-                            elif getattr(c, 'id', None) == 'eur_rate':
-                                c.value = f"{rates.get('EUR', '--'):.2f}"
-                            elif getattr(c, 'id', None) == 'last_updated':
-                                c.value = datetime.now().strftime("%Y-%m-%d %H:%M")
+                self.usd_rate_text.value = f"{rates.get('USD', '--'):.2f}"
+                self.eur_rate_text.value = f"{rates.get('EUR', '--'):.2f}"
+                self.last_updated_text.value = datetime.now().strftime("%Y-%m-%d %H:%M")
                 
                 self.page.snack_bar = ft.SnackBar(content=ft.Text("Exchange rates updated successfully"))
                 self.page.snack_bar.open = True
@@ -451,15 +450,10 @@ class DashboardView:
                 print(f"[ERROR] Failed to get exchange rate timestamp: {e}")
             
             # Update the UI
-            for control in self.currency_info.content.controls:
-                if isinstance(control, ft.Row):
-                    for c in control.controls:
-                        if getattr(c, 'id', None) == 'usd_rate':
-                            c.value = f"{rates.get('USD', '--'):.2f}"
-                        elif getattr(c, 'id', None) == 'eur_rate':
-                            c.value = f"{rates.get('EUR', '--'):.2f}"
-                        elif getattr(c, 'id', None) == 'last_updated' and timestamp:
-                            c.value = timestamp.strftime("%Y-%m-%d %H:%M")
+            self.usd_rate_text.value = f"{rates.get('USD', '--'):.2f}"
+            self.eur_rate_text.value = f"{rates.get('EUR', '--'):.2f}"
+            if timestamp:
+                self.last_updated_text.value = timestamp.strftime("%Y-%m-%d %H:%M")
         except Exception as e:
             print(f"[ERROR] Failed to update exchange rate display: {e}")
         
