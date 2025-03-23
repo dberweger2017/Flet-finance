@@ -58,7 +58,7 @@ class DashboardView:
             content=ft.Column([
                 ft.Text("Liquidity Trend (CHF)", size=20, weight=ft.FontWeight.BOLD),
                 ft.Text("Available funds over the last 90 days", size=14),
-                # Chart will be added here
+                ft.Container(height=250),  # Placeholder for chart
             ]),
             padding=20,
             border=ft.border.all(1, ft.colors.GREY_300),
@@ -71,7 +71,7 @@ class DashboardView:
             content=ft.Column([
                 ft.Text("Net Worth Trend (CHF)", size=20, weight=ft.FontWeight.BOLD),
                 ft.Text("Net worth over the last 90 days", size=14),
-                # Chart will be added here
+                ft.Container(height=250),  # Placeholder for chart
             ]),
             padding=20,
             border=ft.border.all(1, ft.colors.GREY_300),
@@ -84,7 +84,7 @@ class DashboardView:
             content=ft.Column([
                 ft.Text("Monthly Savings (CHF)", size=20, weight=ft.FontWeight.BOLD),
                 ft.Text("Savings contribution by month", size=14),
-                # Chart will be added here
+                ft.Container(height=250),  # Placeholder for chart
             ]),
             padding=20,
             border=ft.border.all(1, ft.colors.GREY_300),
@@ -410,15 +410,25 @@ class DashboardView:
         
         # Update liquidity chart
         liquidity_chart = self._create_liquidity_chart(dashboard_data["liquidity_trend"])
-        self.liquidity_chart_container.content.controls[2] = liquidity_chart
+        # Ensure we have a valid index
+        if len(self.liquidity_chart_container.content.controls) > 2:
+            self.liquidity_chart_container.content.controls[2] = liquidity_chart
+        else:
+            self.liquidity_chart_container.content.controls.append(liquidity_chart)
         
         # Update net worth chart
         net_worth_chart = self._create_net_worth_chart(dashboard_data["net_worth_trend"])
-        self.net_worth_chart_container.content.controls[2] = net_worth_chart
+        if len(self.net_worth_chart_container.content.controls) > 2:
+            self.net_worth_chart_container.content.controls[2] = net_worth_chart
+        else:
+            self.net_worth_chart_container.content.controls.append(net_worth_chart)
         
         # Update savings chart
         savings_chart = self._create_savings_chart(dashboard_data["monthly_savings"])
-        self.savings_chart_container.content.controls[2] = savings_chart
+        if len(self.savings_chart_container.content.controls) > 2:
+            self.savings_chart_container.content.controls[2] = savings_chart
+        else:
+            self.savings_chart_container.content.controls.append(savings_chart)
         
         # Update accounts summary
         accounts = self.db.get_all_accounts()
