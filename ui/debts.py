@@ -233,7 +233,7 @@ class DebtsView:
         delete_button = ft.TextButton(
             "Delete",
             icon=ft.Icons.DELETE,
-            on_click=lambda e, did=debt.id: self.delete_button_clicked(e, did),
+            on_click=lambda e, did=debt.id: self.delete_debt(did),
         )
         
         history_button = ft.TextButton(
@@ -509,7 +509,27 @@ class DebtsView:
             value=debt.linked_account_id or "none",
         )
         
-        def save_edit(e):
+        # Create the dialog
+        dlg = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Edit Debt"),
+            content=ft.Column([
+                description_field,
+                ft.Row([
+                    amount_field,
+                    currency_dropdown,
+                ]),
+                due_date_picker,
+                linked_account_dropdown,
+            ], tight=True, spacing=10),
+            actions=[
+                ft.TextButton("Cancel", on_click=lambda e: self.page.close(dlg)),
+                ft.TextButton("Save", on_click=lambda e: self.save_edit(e, dlg)),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        def save_edit(e, dialog):
             try:
                 # Validate and parse inputs
                 amount = float(amount_field.value)
@@ -545,7 +565,7 @@ class DebtsView:
                 self.page.snack_bar.open = True
                 
                 # Close dialog and reload
-                self.page.dialog.open = False
+                self.page.close(dialog)
                 self.load_debts()
             except ValueError as e:
                 # Show error
@@ -553,37 +573,8 @@ class DebtsView:
                 self.page.snack_bar.open = True
                 self.page.update()
         
-        def cancel_edit(e):
-            self.page.dialog.open = False
-            self.page.update()
-        
-        # Show dialog
-        self.page.dialog = ft.AlertDialog(
-            title=ft.Text("Edit Debt"),
-            content=ft.Column([
-                description_field,
-                ft.Row([
-                    amount_field,
-                    currency_dropdown,
-                ]),
-                due_date_picker,
-                linked_account_dropdown,
-            ], tight=True, spacing=10),
-            actions=[
-                ft.TextButton("Cancel", on_click=cancel_edit),
-                ft.TextButton("Save", on_click=save_edit),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
-        
-        self.page.dialog.open = True
-        self.page.update()
-    
-    def delete_button_clicked(self, e, debt_id):
-        """Debug helper function for delete button clicks"""
-        print(f"Delete button clicked for debt_id: {debt_id}")
-        print(f"Event data: {e}")
-        self.delete_debt(debt_id)
+        # Open the dialog
+        self.page.open(dlg)
     
     def delete_debt(self, debt_id):
         """Delete a debt after confirmation"""
@@ -593,19 +584,35 @@ class DebtsView:
         
         def confirm_delete(e):
             print(f"Confirm delete called for debt_id: {current_debt_id}")
-            self.db.delete_debt(current_debt_id)
-            self.page.snack_bar = ft.SnackBar(content=ft.Text("Debt deleted"))
-            self.page.snack_bar.open = True
-            self.load_debts()
-            self.page.dialog.open = False
-            self.page.update()
+            # Check if the debt exists first
+            debt = self.db.get_debt(current_debt_id)
+            if debt:
+                result = self.db.delete_debt(current_debt_id)
+                print(f"Database delete result: {result}")
+                self.page.snack_bar = ft.SnackBar(content=ft.Text("Debt deleted"))
+                self.page.snack_bar.open = True
+                print("About to reload debts")
+                self.load_debts()
+                print("Debts reloaded")
+            else:
+                print(f"Debt with ID {current_debt_id} not found")
+                self.page.snack_bar = ft.SnackBar(content=ft.Text("Error: Debt not found"))
+                self.page.snack_bar.open = True
+            
+            # Close the dialog
+            self.page.close(dlg)
+            print("Dialog closed")
         
         def cancel_delete(e):
-            self.page.dialog.open = False
-            self.page.update()
+            print(f"Cancel delete called for debt_id: {current_debt_id}")
+            # Close the dialog
+            self.page.close(dlg)
+            print("Dialog closed")
         
-        # Show confirmation dialog
-        self.page.dialog = ft.AlertDialog(
+        # Create confirmation dialog
+        print(f"Creating dialog for debt_id: {current_debt_id}")
+        dlg = ft.AlertDialog(
+            modal=True,
             title=ft.Text("Confirm Delete"),
             content=ft.Text("Are you sure you want to delete this debt? This action cannot be undone."),
             actions=[
@@ -615,8 +622,10 @@ class DebtsView:
             actions_alignment=ft.MainAxisAlignment.END,
         )
         
-        self.page.dialog.open = True
-        self.page.update()
+        # Open the dialog using the correct method
+        print(f"Opening dialog for debt_id: {current_debt_id}")
+        self.page.open(dlg)
+        print(f"Dialog should be visible for debt_id: {current_debt_id}")
 
     def show_partial_payment_dialog(self, debt_id):
         """Show dialog to make a partial payment on a debt"""

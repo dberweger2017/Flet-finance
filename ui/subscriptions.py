@@ -547,28 +547,24 @@ class SubscriptionsView:
     
     def delete_subscription(self, subscription_id):
         """Delete a subscription after confirmation"""
-        def confirm_delete(e):
-            self.db.delete_subscription(subscription_id)
-            self.page.snack_bar = ft.SnackBar(content=ft.Text("Subscription deleted"))
-            self.page.snack_bar.open = True
-            self.load_subscriptions()
-            self.page.dialog.open = False
-            self.page.update()
-        
-        def cancel_delete(e):
-            self.page.dialog.open = False
-            self.page.update()
-        
-        # Show confirmation dialog
-        self.page.dialog = ft.AlertDialog(
+        # Create confirmation dialog
+        dlg = ft.AlertDialog(
+            modal=True,
             title=ft.Text("Confirm Delete"),
             content=ft.Text("Are you sure you want to delete this subscription? This action cannot be undone."),
             actions=[
-                ft.TextButton("Cancel", on_click=cancel_delete),
-                ft.TextButton("Delete", on_click=confirm_delete),
+                ft.TextButton("Cancel", on_click=lambda e: self.page.close(dlg)),
+                ft.TextButton("Delete", on_click=lambda e: confirm_delete(e, dlg)),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
         
-        self.page.dialog.open = True
-        self.page.update()
+        def confirm_delete(e, dialog):
+            self.db.delete_subscription(subscription_id)
+            self.page.snack_bar = ft.SnackBar(content=ft.Text("Subscription deleted"))
+            self.page.snack_bar.open = True
+            self.load_subscriptions()
+            self.page.close(dialog)
+        
+        # Open the dialog using the correct method
+        self.page.open(dlg)
