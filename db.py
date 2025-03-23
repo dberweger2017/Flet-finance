@@ -5,6 +5,7 @@ import json
 import os
 import threading
 from datetime import datetime, date, timedelta
+from models import CurrencyConverter
 
 class Database:
     def __init__(self, db_path="finance_tracker.db"):
@@ -483,15 +484,22 @@ class Database:
         liquidity = 0
         
         for account in accounts:
+            account_value_in_chf = 0
             if account.account_type == "debit":
                 # Add only non-negative balance for debit accounts
-                liquidity += max(0, account.balance)
+                account_value = max(0, account.balance)
+                # Convert to CHF if needed
+                account_value_in_chf = CurrencyConverter.convert_to_chf(account_value, account.currency)
             elif account.account_type == "savings":
-                liquidity += account.balance
+                # Convert to CHF if needed
+                account_value_in_chf = CurrencyConverter.convert_to_chf(account.balance, account.currency)
             elif account.account_type == "credit":
-                liquidity += account.get_available_balance()
+                # Convert to CHF if needed
+                account_value_in_chf = CurrencyConverter.convert_to_chf(account.get_available_balance(), account.currency)
+            
+            liquidity += account_value_in_chf
         
-        print(f"[DEBUG] Total liquidity: {liquidity}")
+        print(f"[DEBUG] Total liquidity: {liquidity} CHF")
         return liquidity
     
     def get_net_worth(self):
@@ -502,40 +510,53 @@ class Database:
             assets = 0
             accounts = self.get_all_accounts()
             for account in accounts:
-                assets += account.balance
+                # Convert all account balances to CHF
+                account_value_in_chf = CurrencyConverter.convert_to_chf(account.balance, account.currency)
+                assets += account_value_in_chf
             
             receivables = self.get_all_debts(status="pending", is_receivable=True)
             for debt in receivables:
-                assets += debt.amount
+                # Convert receivable amounts to CHF
+                debt_value_in_chf = CurrencyConverter.convert_to_chf(debt.amount, debt.currency)
+                assets += debt_value_in_chf
             
-            print(f"[DEBUG] Total assets: {assets}")
+            print(f"[DEBUG] Total assets: {assets} CHF")
             
             # Liabilities: Credit account negative balances + debts
             liabilities = 0
             for account in accounts:
                 if account.account_type == "credit" and account.balance < 0:
-                    liabilities += abs(account.balance)
+                    # Convert negative credit balances to CHF
+                    credit_value_in_chf = CurrencyConverter.convert_to_chf(abs(account.balance), account.currency)
+                    liabilities += credit_value_in_chf
             
             payable_debts = self.get_all_debts(status="pending", is_receivable=False)
             for debt in payable_debts:
-                liabilities += debt.amount
+                # Convert debt amounts to CHF
+                debt_value_in_chf = CurrencyConverter.convert_to_chf(debt.amount, debt.currency)
+                liabilities += debt_value_in_chf
             
-            print(f"[DEBUG] Total liabilities before subscriptions: {liabilities}")
+            print(f"[DEBUG] Total liabilities before subscriptions: {liabilities} CHF")
             
             # Upcoming subscription payments (next 30 days)
             today = date.today()
             thirty_days = today + timedelta(days=30)
             cursor = self.conn.cursor()
             cursor.execute('''
-            SELECT SUM(amount) FROM subscriptions 
+            SELECT amount, currency FROM subscriptions 
             WHERE status = 'active' AND next_payment_date <= ?
             ''', (thirty_days.isoformat(),))
             
-            upcoming_subscriptions = cursor.fetchone()[0] or 0
-            liabilities += upcoming_subscriptions
+            upcoming_subscriptions = cursor.fetchall()
+            for sub in upcoming_subscriptions:
+                amount, currency = sub
+                if amount:
+                    # Convert subscription amounts to CHF
+                    sub_value_in_chf = CurrencyConverter.convert_to_chf(amount, currency)
+                    liabilities += sub_value_in_chf
             
-            print(f"[DEBUG] Total liabilities including subscriptions: {liabilities}")
-            print(f"[DEBUG] Net worth: {assets - liabilities}")
+            print(f"[DEBUG] Total liabilities including subscriptions: {liabilities} CHF")
+            print(f"[DEBUG] Net worth: {assets - liabilities} CHF")
             
             return {
                 "assets": assets,

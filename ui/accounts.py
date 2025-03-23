@@ -46,6 +46,7 @@ class AccountsView:
             options=[
                 ft.dropdown.Option("CHF", "Swiss Franc (CHF)"),
                 ft.dropdown.Option("EUR", "Euro (EUR)"),
+                ft.dropdown.Option("USD", "US Dollar (USD)"),
             ],
             value="CHF",
         )

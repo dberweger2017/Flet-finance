@@ -5,6 +5,7 @@ from datetime import datetime, date, timedelta
 import calendar
 import json
 from dashboard_data import DashboardDataProvider
+from models import CurrencyConverter
 
 class DashboardView:
     def __init__(self, page, db):
@@ -16,284 +17,139 @@ class DashboardView:
         self.update_data()
         
     def build(self):
-        """Build the dashboard UI with simple chart visualizations"""
-        # Create metrics cards (same as the original)
-        self.liquidity_card = self._create_metric_card(
-            "Current Liquidity",
-            "0.00 CHF",
-            "Amount available for immediate spending"
+        """Build the dashboard UI"""
+        # Pending transactions alert
+        self.pending_alert = ft.Container(
+            content=ft.Row([
+                ft.Icon(ft.Icons.WARNING_AMBER, color=ft.colors.AMBER),
+                ft.Text("You have pending transactions that need your approval."),
+                ft.Container(expand=True),
+                ft.TextButton("View Pending", on_click=self._go_to_pending),
+            ]),
+            border=ft.border.all(1, ft.colors.AMBER),
+            border_radius=5,
+            padding=10,
+            margin=ft.margin.only(bottom=20),
+            visible=False,  # Will be made visible if pending transactions exist
         )
         
-        self.net_worth_card = self._create_metric_card(
-            "Net Worth",
-            "0.00 CHF",
-            "Assets - Liabilities"
+        # Dashboard metrics
+        self.metrics_row = ft.Row([
+            self._create_metric_card("Liquidity", "0.00 CHF", "Available funds"),
+            self._create_metric_card("Net Worth", "0.00 CHF", "Assets - Liabilities"),
+            self._create_metric_card("Savings Rate", "0.00 CHF/month", "Current month"),
+        ])
+        
+        # Currency conversion info
+        self.currency_info = ft.Container(
+            content=ft.Column([
+                ft.Text("Currency Exchange Rates (Base: CHF)", size=14, weight=ft.FontWeight.BOLD),
+                ft.Text("1 CHF = 1.13 USD", size=12),
+                ft.Text("1 CHF = 1.04 EUR", size=12),
+            ]),
+            padding=10,
+            border=ft.border.all(1, ft.colors.GREY_300),
+            border_radius=10,
+            margin=ft.margin.only(bottom=20),
         )
         
-        self.savings_card = self._create_metric_card(
-            "Savings",
-            "0.00 CHF",
-            "Total savings accounts balance"
-        )
-        
-        self.monthly_savings_card = self._create_metric_card(
-            "Monthly Savings",
-            "0.00 CHF",
-            f"Savings in {calendar.month_name[datetime.now().month]}"
-        )
-        
-        # Create simple chart visualizations using basic Flet components
-        
-        # Liquidity Chart Container
-        self.liquidity_chart_title = ft.Text(
-            "Liquidity Trend (Last 90 Days)",
-            size=18,
-            weight=ft.FontWeight.BOLD
-        )
-        
+        # Liquidity trend chart
         self.liquidity_chart_container = ft.Container(
             content=ft.Column([
-                self.liquidity_chart_title,
-                ft.Text("Daily amount available for immediate spending", size=12, color=ft.colors.GREY_600),
-                # Placeholder for the chart - will be populated in update_data
-                ft.Container(
-                    content=ft.Text("Loading chart data...", color=ft.colors.GREY_400),
-                    alignment=ft.alignment.center,
-                    height=200
-                )
+                ft.Text("Liquidity Trend (CHF)", size=20, weight=ft.FontWeight.BOLD),
+                ft.Text("Available funds over the last 90 days", size=14),
+                # Chart will be added here
             ]),
-            margin=ft.margin.only(top=10, bottom=20),
-            padding=10,
+            padding=20,
             border=ft.border.all(1, ft.colors.GREY_300),
             border_radius=10,
-            width=800,
-            alignment=ft.alignment.center
+            margin=ft.margin.only(bottom=20),
         )
         
-        # Net Worth Chart Container
-        self.net_worth_chart_title = ft.Text(
-            "Net Worth Progress (Last 90 Days)",
-            size=18,
-            weight=ft.FontWeight.BOLD
-        )
-        
+        # Net worth trend chart
         self.net_worth_chart_container = ft.Container(
             content=ft.Column([
-                self.net_worth_chart_title,
-                ft.Text("Daily assets minus liabilities over time", size=12, color=ft.colors.GREY_600),
-                # Placeholder for the chart - will be populated in update_data
-                ft.Container(
-                    content=ft.Text("Loading chart data...", color=ft.colors.GREY_400),
-                    alignment=ft.alignment.center,
-                    height=200
-                )
+                ft.Text("Net Worth Trend (CHF)", size=20, weight=ft.FontWeight.BOLD),
+                ft.Text("Net worth over the last 90 days", size=14),
+                # Chart will be added here
             ]),
-            margin=ft.margin.only(top=10, bottom=20),
-            padding=10,
+            padding=20,
             border=ft.border.all(1, ft.colors.GREY_300),
             border_radius=10,
-            width=800,
-            alignment=ft.alignment.center
+            margin=ft.margin.only(bottom=20),
         )
         
-        # Monthly Savings Chart Container
-        self.savings_chart_title = ft.Text(
-            "Monthly Savings",
-            size=18,
-            weight=ft.FontWeight.BOLD
-        )
-        
+        # Monthly savings chart
         self.savings_chart_container = ft.Container(
             content=ft.Column([
-                self.savings_chart_title,
-                ft.Text("Amount saved each month", size=12, color=ft.colors.GREY_600),
-                # Placeholder for the chart - will be populated in update_data
-                ft.Container(
-                    content=ft.Text("Loading chart data...", color=ft.colors.GREY_400),
-                    alignment=ft.alignment.center,
-                    height=200
-                )
+                ft.Text("Monthly Savings (CHF)", size=20, weight=ft.FontWeight.BOLD),
+                ft.Text("Savings contribution by month", size=14),
+                # Chart will be added here
             ]),
-            margin=ft.margin.only(top=10, bottom=20),
-            padding=10,
+            padding=20,
             border=ft.border.all(1, ft.colors.GREY_300),
             border_radius=10,
-            width=800,
-            alignment=ft.alignment.center
+            margin=ft.margin.only(bottom=20),
         )
         
-        # Accounts summary section (same as original)
+        # Accounts table
         self.accounts_summary = ft.DataTable(
             columns=[
                 ft.DataColumn(ft.Text("Account")),
                 ft.DataColumn(ft.Text("Type")),
                 ft.DataColumn(ft.Text("Currency")),
-                ft.DataColumn(ft.Text("Balance"), numeric=True),
-                ft.DataColumn(ft.Text("Available"), numeric=True),
+                ft.DataColumn(ft.Text("Balance")),
+                ft.DataColumn(ft.Text("Available")),
             ],
             rows=[],
         )
         
-        # Upcoming section (same as original)
+        # Upcoming transactions table
         self.upcoming_transactions = ft.DataTable(
             columns=[
                 ft.DataColumn(ft.Text("Date")),
                 ft.DataColumn(ft.Text("Description")),
-                ft.DataColumn(ft.Text("Amount"), numeric=True),
+                ft.DataColumn(ft.Text("Amount")),
                 ft.DataColumn(ft.Text("Type")),
             ],
             rows=[],
         )
         
-        # Card for pending transactions alert (same as original)
-        self.pending_alert = ft.Card(
-            content=ft.Container(
-                content=ft.Column([
-                    ft.Row([
-                        ft.Icon(ft.Icons.NOTIFICATIONS_ACTIVE, color=ft.colors.AMBER),
-                        ft.Text("Pending Transactions", weight=ft.FontWeight.BOLD),
-                    ]),
-                    ft.Text("You have 0 pending transactions that need attention.", size=14),
-                    ft.ElevatedButton(
-                        "View Pending Transactions",
-                        on_click=self._go_to_pending
-                    ),
-                ]),
-                padding=10,
-            ),
-            visible=False
-        )
-        
-        # Return the main container with charts
+        # Return the main container
         return ft.Container(
             content=ft.Column([
                 ft.Container(
-                    content=ft.Text("Dashboard", size=32, weight=ft.FontWeight.BOLD),
-                    margin=ft.margin.only(bottom=20)
+                    content=ft.Row([
+                        ft.Text("Financial Dashboard", size=32, weight=ft.FontWeight.BOLD),
+                        ft.Container(expand=True),
+                        ft.ElevatedButton(
+                            "Refresh",
+                            icon=ft.Icons.REFRESH,
+                            on_click=self._refresh_clicked,
+                        ),
+                    ]),
+                    margin=ft.margin.only(bottom=20, top=10),
                 ),
-                
-                # Pending transactions alert (same as original)
                 self.pending_alert,
-                
-                # Current Liquidity section
+                self.metrics_row,
+                self.currency_info,
+                self.liquidity_chart_container,
+                self.net_worth_chart_container,
+                self.savings_chart_container,
+                ft.Text("Accounts Summary", size=20, weight=ft.FontWeight.BOLD),
                 ft.Container(
-                    content=ft.Column([
-                        # Liquidity title in the middle
-                        ft.Container(
-                            content=ft.Text("Current Liquidity", size=24, weight=ft.FontWeight.BOLD),
-                            alignment=ft.alignment.center,
-                            margin=ft.margin.only(top=10, bottom=10)
-                        ),
-                        # Liquidity metric value
-                        ft.Container(
-                            content=ft.Text(
-                                f"{self.db.get_liquidity():.2f} CHF",
-                                size=32,
-                                weight=ft.FontWeight.BOLD,
-                                color=ft.colors.BLUE
-                            ),
-                            alignment=ft.alignment.center,
-                            margin=ft.margin.only(bottom=20)
-                        ),
-                        # Liquidity chart
-                        ft.Container(
-                            content=self.liquidity_chart_container,
-                            alignment=ft.alignment.center
-                        )
-                    ]),
-                    margin=ft.margin.only(bottom=30)
+                    content=self.accounts_summary,
+                    height=300,
+                    border=ft.border.all(1, ft.colors.GREY_300),
+                    border_radius=10,
+                    margin=ft.margin.only(bottom=20),
                 ),
-                
-                # Net Worth section
+                ft.Text("Upcoming Transactions", size=20, weight=ft.FontWeight.BOLD),
                 ft.Container(
-                    content=ft.Column([
-                        # Net Worth title in the middle
-                        ft.Container(
-                            content=ft.Text("Net Worth", size=24, weight=ft.FontWeight.BOLD),
-                            alignment=ft.alignment.center,
-                            margin=ft.margin.only(top=10, bottom=10)
-                        ),
-                        # Net Worth metric value
-                        ft.Container(
-                            content=ft.Text(
-                                f"{self.db.get_net_worth()['net_worth']:.2f} CHF",
-                                size=32,
-                                weight=ft.FontWeight.BOLD,
-                                color=ft.colors.GREEN
-                            ),
-                            alignment=ft.alignment.center,
-                            margin=ft.margin.only(bottom=20)
-                        ),
-                        # Net Worth chart
-                        ft.Container(
-                            content=self.net_worth_chart_container,
-                            alignment=ft.alignment.center
-                        )
-                    ]),
-                    margin=ft.margin.only(bottom=30)
-                ),
-                
-                # Monthly Savings section
-                ft.Container(
-                    content=ft.Column([
-                        # Monthly Savings title in the middle
-                        ft.Container(
-                            content=ft.Text("Monthly Savings", size=24, weight=ft.FontWeight.BOLD),
-                            alignment=ft.alignment.center,
-                            margin=ft.margin.only(top=10, bottom=10)
-                        ),
-                        # Monthly Savings metric value
-                        ft.Container(
-                            content=ft.Text(
-                                f"{self.db.get_savings_stats()['month_contribution']:.2f} CHF",
-                                size=32,
-                                weight=ft.FontWeight.BOLD,
-                                color=ft.colors.PURPLE
-                            ),
-                            alignment=ft.alignment.center,
-                            margin=ft.margin.only(bottom=20)
-                        ),
-                        # Savings chart
-                        ft.Container(
-                            content=self.savings_chart_container,
-                            alignment=ft.alignment.center
-                        )
-                    ]),
-                    margin=ft.margin.only(bottom=30)
-                ),
-                
-                # Accounts section (same as original)
-                ft.Container(
-                    content=ft.Column([
-                        ft.Container(
-                            content=ft.Text("Accounts Overview", size=20, weight=ft.FontWeight.BOLD),
-                            margin=ft.margin.only(bottom=10, top=20)
-                        ),
-                        self.accounts_summary,
-                    ]),
-                    margin=ft.margin.only(bottom=20)
-                ),
-                
-                # Upcoming section (same as original)
-                ft.Container(
-                    content=ft.Column([
-                        ft.Container(
-                            content=ft.Text("Upcoming Transactions", size=20, weight=ft.FontWeight.BOLD),
-                            margin=ft.margin.only(bottom=10, top=10)
-                        ),
-                        self.upcoming_transactions,
-                    ]),
-                ),
-                
-                # Refresh button (same as original)
-                ft.Container(
-                    content=ft.ElevatedButton(
-                        "Refresh Dashboard",
-                        icon=ft.Icons.REFRESH,
-                        on_click=self._refresh_clicked
-                    ),
-                    alignment=ft.alignment.center,
-                    margin=ft.margin.only(top=20)
+                    content=self.upcoming_transactions,
+                    height=200,
+                    border=ft.border.all(1, ft.colors.GREY_300),
+                    border_radius=10,
                 ),
             ]),
             padding=20,
@@ -530,10 +386,24 @@ class DashboardView:
     
     def update_data(self):
         """Update dashboard with latest data from database"""
-        # Original metrics update code
+        # Show or hide pending transactions alert
+        pending_transactions = self.db.get_all_transactions(status="pending")
+        if pending_transactions:
+            self.pending_alert.visible = True
+        else:
+            self.pending_alert.visible = False
+        
+        # Update metrics
         net_worth_data = self.db.get_net_worth()
         liquidity = self.db.get_liquidity()
         savings_data = self.db.get_savings_stats()
+        
+        # Update the metrics row with current values (all in CHF)
+        self.metrics_row.controls = [
+            self._create_metric_card("Liquidity", f"{liquidity:.2f} CHF", "Available funds (all currencies converted to CHF)"),
+            self._create_metric_card("Net Worth", f"{net_worth_data['net_worth']:.2f} CHF", "Assets - Liabilities (all currencies converted to CHF)"),
+            self._create_metric_card("Savings Rate", f"{savings_data['month_contribution']:.2f} CHF/month", "Current month"),
+        ]
         
         # Get chart data from data provider
         dashboard_data = self.data_provider.get_dashboard_data()
@@ -550,7 +420,7 @@ class DashboardView:
         savings_chart = self._create_savings_chart(dashboard_data["monthly_savings"])
         self.savings_chart_container.content.controls[2] = savings_chart
         
-        # Original code for updating accounts summary
+        # Update accounts summary
         accounts = self.db.get_all_accounts()
         rows = []
         
@@ -564,23 +434,35 @@ class DashboardView:
             if account.balance < 0:
                 balance_color = ft.colors.RED
             
+            # Include the native currency and the CHF equivalent in parentheses
+            balance_in_chf = CurrencyConverter.convert_to_chf(account.balance, account.currency)
+            available_in_chf = CurrencyConverter.convert_to_chf(account.get_available_balance(), account.currency)
+            
+            balance_text = f"{account.balance:.2f} {account.currency}"
+            if account.currency != "CHF":
+                balance_text += f" ({balance_in_chf:.2f} CHF)"
+            
+            available_text = f"{account.get_available_balance():.2f} {account.currency}"
+            if account.currency != "CHF":
+                available_text += f" ({available_in_chf:.2f} CHF)"
+            
             rows.append(
                 ft.DataRow(
                     cells=[
                         ft.DataCell(ft.Row([icon, ft.Text(account.name)])),
                         ft.DataCell(ft.Text(account.account_type.capitalize())),
                         ft.DataCell(ft.Text(account.currency)),
-                        ft.DataCell(ft.Text(f"{account.balance:.2f}", color=balance_color)),
-                        ft.DataCell(ft.Text(f"{account.get_available_balance():.2f}")),
+                        ft.DataCell(ft.Text(balance_text, color=balance_color)),
+                        ft.DataCell(ft.Text(available_text)),
                     ]
                 )
             )
         
         self.accounts_summary.rows = rows
         
-        # Original code for updating upcoming transactions
+        # Update upcoming transactions
         today = date.today()
-        seven_days = today.replace(day=today.day + 7)
+        seven_days = today + timedelta(days=7)
         
         # Get upcoming subscription payments
         subscriptions = self.db.get_all_subscriptions(status="active")
@@ -594,20 +476,38 @@ class DashboardView:
         upcoming_rows = []
         
         for sub in upcoming_subs:
+            # Include the CHF equivalent for non-CHF currencies
+            amount_text = f"-{sub.amount:.2f} {sub.currency}"
+            if sub.currency != "CHF":
+                amount_in_chf = CurrencyConverter.convert_to_chf(sub.amount, sub.currency)
+                amount_text += f" ({amount_in_chf:.2f} CHF)"
+            
             upcoming_rows.append(
                 ft.DataRow(
                     cells=[
                         ft.DataCell(ft.Text(sub.next_payment_date.strftime("%Y-%m-%d"))),
                         ft.DataCell(ft.Text(f"Subscription: {sub.name}")),
-                        ft.DataCell(ft.Text(f"-{sub.amount:.2f} {sub.currency}", color=ft.colors.RED)),
+                        ft.DataCell(ft.Text(amount_text, color=ft.colors.RED)),
                         ft.DataCell(ft.Text("Subscription")),
                     ]
                 )
             )
         
         for debt in upcoming_debts:
-            amount_text = f"-{debt.amount:.2f} {debt.currency}" if not debt.is_receivable else f"+{debt.amount:.2f} {debt.currency}"
-            amount_color = ft.colors.RED if not debt.is_receivable else ft.colors.GREEN
+            # Include the CHF equivalent for non-CHF currencies
+            amount_in_chf = CurrencyConverter.convert_to_chf(debt.amount, debt.currency)
+            
+            if not debt.is_receivable:
+                amount_text = f"-{debt.amount:.2f} {debt.currency}"
+                if debt.currency != "CHF":
+                    amount_text += f" (-{amount_in_chf:.2f} CHF)"
+                amount_color = ft.colors.RED
+            else:
+                amount_text = f"+{debt.amount:.2f} {debt.currency}"
+                if debt.currency != "CHF":
+                    amount_text += f" (+{amount_in_chf:.2f} CHF)"
+                amount_color = ft.colors.GREEN
+            
             debt_type = "Payment Due" if not debt.is_receivable else "Payment Expected"
             
             upcoming_rows.append(
@@ -623,18 +523,11 @@ class DashboardView:
         
         # Sort by date
         upcoming_rows.sort(key=lambda row: row.cells[0].content.value)
+        
+        # Limit to 5 most recent
+        upcoming_rows = upcoming_rows[:5]
+        
         self.upcoming_transactions.rows = upcoming_rows
         
-        # Update pending transactions alert
-        pending_transactions = self.db.get_all_transactions(status="pending")
-        if pending_transactions:
-            self.pending_alert.content.content.controls[1].value = f"You have {len(pending_transactions)} pending transactions that need attention."
-            self.pending_alert.visible = True
-        else:
-            self.pending_alert.visible = False
-        
-        # Check and update overdue debts
-        self.db.check_and_update_overdue_debts()
-        
-        # Generate subscription transactions
-        self.db.generate_pending_subscription_transactions()
+        # Update the page
+        self.page.update()

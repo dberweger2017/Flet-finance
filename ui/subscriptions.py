@@ -69,6 +69,7 @@ class SubscriptionsView:
             options=[
                 ft.dropdown.Option("CHF", "CHF"),
                 ft.dropdown.Option("EUR", "EUR"),
+                ft.dropdown.Option("USD", "USD"),
             ],
             value="CHF",
         )

@@ -8,13 +8,50 @@ import json
 from decimal import Decimal
 
 
+class CurrencyConverter:
+    """Utility class for currency conversion using fixed exchange rates"""
+    
+    # Exchange rates (base currency: CHF)
+    RATES = {
+        "CHF": 1.0,        # 1 CHF = 1 CHF
+        "EUR": 1.04,       # 1 CHF = 1.04 EUR
+        "USD": 1.13        # 1 CHF = 1.13 USD
+    }
+    
+    @staticmethod
+    def convert_to_chf(amount, from_currency):
+        """Convert any currency to CHF (base currency)"""
+        if from_currency == "CHF":
+            return amount
+        
+        # For other currencies, convert back to CHF
+        if from_currency in CurrencyConverter.RATES:
+            return amount / CurrencyConverter.RATES[from_currency]
+        
+        # Default to no conversion if currency not supported
+        return amount
+    
+    @staticmethod
+    def convert_from_chf(amount, to_currency):
+        """Convert CHF to other currencies"""
+        if to_currency == "CHF":
+            return amount
+            
+        # Convert CHF to target currency
+        if to_currency in CurrencyConverter.RATES:
+            return amount * CurrencyConverter.RATES[to_currency]
+            
+        # Default to no conversion if currency not supported
+        return amount
+
+
 class Account:
     def __init__(self, id=None, name="", account_type="debit", currency="CHF", 
                  balance=0.0, credit_limit=0.0, is_savings=False):
         self.id = id or str(uuid.uuid4())
         self.name = name
         self.account_type = account_type  # "debit", "credit", "savings"
-        self.currency = currency  # "CHF", "EUR"
+        self.currency = currency  # "CHF", "EUR", "USD"
         self.balance = float(balance)
         self.credit_limit = float(credit_limit)
         self.is_savings = is_savings
