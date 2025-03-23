@@ -1,5 +1,6 @@
 # ui/debts.py - Finance Tracker App/ui/debts.py
 
+import sys
 import flet as ft
 from datetime import datetime, date
 from models import Debt
@@ -232,7 +233,8 @@ class DebtsView:
         delete_button = ft.TextButton(
             "Delete",
             icon=ft.Icons.DELETE,
-            on_click=lambda e, did=debt.id: self.delete_debt(did),
+            data=debt.id,
+            on_click=lambda e: self.delete_debt(e.control.data),
         )
         
         history_button = ft.TextButton(

@@ -1,5 +1,6 @@
 # ui/transactions.py - Finance Tracker App/ui/transactions.py
 
+import sys
 import flet as ft
 from datetime import datetime, date, timedelta
 from models import Transaction
@@ -378,13 +379,11 @@ class TransactionsView:
                 account_info = f"Account: {to_account_name}"
         
         # Delete button
-        def on_delete_click(e, transaction_id=transaction.id):
-            self.delete_transaction(transaction_id)
-
         delete_button = ft.IconButton(
             icon=ft.Icons.DELETE,
             tooltip="Delete transaction",
-            on_click=lambda e: on_delete_click(e, transaction.id),
+            data=transaction.id,  # Store the ID as data on the button
+            on_click=lambda e: self.delete_transaction(e.control.data),
         )
         
         # Create transaction card
